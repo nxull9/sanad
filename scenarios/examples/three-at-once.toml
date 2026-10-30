@@ -1,0 +1,19 @@
+# Three causes at once: a hot GPU, silent corruption on another, and a
+# template release. Fixing one leaves the others.
+name = "three-at-once"
+seed = 11
+warmup = 30
+
+[[fault]]
+kind = "gpu_thermal"
+at = 32
+target = ["gpu-2"]
+
+[[fault]]
+kind = "gpu_corruption"
+at = 35
+target = ["gpu-4"]
+
+[[fault]]
+kind = "bad_template"
+at = 38

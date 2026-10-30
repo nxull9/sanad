@@ -1,0 +1,13 @@
+# A tokenizer upgrade on half the fleet garbles Arabic answers. Nothing errors.
+name = "arabic-goes-quiet"
+seed = 7
+warmup = 30
+
+[[fault]]
+kind = "benign_change"
+at = 34
+
+[[fault]]
+kind = "bad_tokenizer"
+at = 36
+target = ["replica-1", "replica-2"]

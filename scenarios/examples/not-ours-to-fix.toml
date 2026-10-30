@@ -1,0 +1,9 @@
+# The identity service, owned by another team, goes down. The right move is
+# to escalate, not to restart things.
+name = "not-ours-to-fix"
+seed = 5
+warmup = 30
+
+[[fault]]
+kind = "identity_outage"
+at = 33
