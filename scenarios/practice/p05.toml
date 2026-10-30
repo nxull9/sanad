@@ -1,0 +1,11 @@
+# 1 fault
+#   step 37: bad_template (silent)
+
+name = "p05"
+seed = 104
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_template"
+at = 37

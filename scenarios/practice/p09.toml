@@ -1,0 +1,12 @@
+# 1 fault
+#   step 34: gpu_thermal on gpu-3
+
+name = "p09"
+seed = 108
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "gpu_thermal"
+at = 34
+target = ["gpu-3"]

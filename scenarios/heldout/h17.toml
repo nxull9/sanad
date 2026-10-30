@@ -1,0 +1,19 @@
+# 2 faults, the last arriving late
+#   step 38: traffic_spike factor=1.6
+#   step 87: bad_worker_concurrency
+
+name = "h17"
+seed = 1016
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "traffic_spike"
+at = 38
+[fault.params]
+factor = 1.6
+
+[[fault]]
+name = "f2"
+kind = "bad_worker_concurrency"
+at = 87

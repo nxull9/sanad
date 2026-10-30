@@ -1,0 +1,19 @@
+# 2 faults
+#   step 34: rack_power rack=rack-b (needs a person)
+#   step 42: index_corruption (silent)
+
+name = "h12"
+seed = 1011
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "rack_power"
+at = 34
+[fault.params]
+rack = "rack-b"
+
+[[fault]]
+name = "f2"
+kind = "index_corruption"
+at = 42

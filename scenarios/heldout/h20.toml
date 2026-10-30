@@ -1,0 +1,26 @@
+# 3 faults
+#   step 35: index_corruption (silent)
+#   step 37: rack_power rack=rack-a (needs a person)
+#   step 41: bad_tokenizer on replica-1, replica-3, replica-4 (silent)
+
+name = "h20"
+seed = 1019
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "index_corruption"
+at = 35
+
+[[fault]]
+name = "f2"
+kind = "rack_power"
+at = 37
+[fault.params]
+rack = "rack-a"
+
+[[fault]]
+name = "f3"
+kind = "bad_tokenizer"
+at = 41
+target = ["replica-1", "replica-3", "replica-4"]

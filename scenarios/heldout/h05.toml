@@ -1,0 +1,12 @@
+# 1 fault
+#   step 38: bad_quantization on replica-2 (silent)
+
+name = "h05"
+seed = 1004
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_quantization"
+at = 38
+target = ["replica-2"]

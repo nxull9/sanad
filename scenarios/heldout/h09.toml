@@ -1,0 +1,12 @@
+# 1 fault
+#   step 36: gpu_corruption on gpu-1 (silent)
+
+name = "h09"
+seed = 1008
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "gpu_corruption"
+at = 36
+target = ["gpu-1"]

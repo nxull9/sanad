@@ -1,0 +1,5 @@
+# 0 faults: a healthy control, the right answer is that nothing needs fixing
+
+name = "h01"
+seed = 1000
+warmup = 30

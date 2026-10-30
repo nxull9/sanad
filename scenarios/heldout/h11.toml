@@ -1,0 +1,19 @@
+# 2 faults
+#   step 35: identity_outage (needs a person)
+#   step 37: traffic_spike factor=1.7
+
+name = "h11"
+seed = 1010
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "identity_outage"
+at = 35
+
+[[fault]]
+name = "f2"
+kind = "traffic_spike"
+at = 37
+[fault.params]
+factor = 1.7

@@ -1,0 +1,18 @@
+# 2 faults, the last arriving late
+#   step 38: bad_worker_concurrency
+#   step 72: replica_crash on replica-1
+
+name = "p21"
+seed = 120
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_worker_concurrency"
+at = 38
+
+[[fault]]
+name = "f2"
+kind = "replica_crash"
+at = 72
+target = ["replica-1"]

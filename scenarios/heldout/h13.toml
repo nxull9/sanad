@@ -1,0 +1,19 @@
+# 2 faults
+#   step 37: bad_quantization (silent)
+#   step 43: traffic_spike factor=1.7
+
+name = "h13"
+seed = 1012
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_quantization"
+at = 37
+
+[[fault]]
+name = "f2"
+kind = "traffic_spike"
+at = 43
+[fault.params]
+factor = 1.7

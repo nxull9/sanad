@@ -1,0 +1,11 @@
+# 1 fault
+#   step 34: bad_model (silent)
+
+name = "p04"
+seed = 103
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_model"
+at = 34

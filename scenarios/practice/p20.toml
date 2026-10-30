@@ -1,0 +1,31 @@
+# 3 faults
+#   step 35: benign_change (red herring)
+#   step 37: bad_template (silent)
+#   step 43: gpu_thermal on gpu-2
+#   step 49: replica_crash on replica-1
+
+name = "p20"
+seed = 119
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "benign_change"
+at = 35
+
+[[fault]]
+name = "f2"
+kind = "bad_template"
+at = 37
+
+[[fault]]
+name = "f3"
+kind = "gpu_thermal"
+at = 43
+target = ["gpu-2"]
+
+[[fault]]
+name = "f4"
+kind = "replica_crash"
+at = 49
+target = ["replica-1"]

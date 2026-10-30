@@ -1,0 +1,11 @@
+# 1 fault
+#   step 34: index_corruption (silent)
+
+name = "h06"
+seed = 1005
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "index_corruption"
+at = 34

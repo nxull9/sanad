@@ -1,0 +1,11 @@
+# 1 fault
+#   step 36: bad_worker_concurrency
+
+name = "p07"
+seed = 106
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_worker_concurrency"
+at = 36

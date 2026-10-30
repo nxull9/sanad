@@ -1,0 +1,11 @@
+# 1 fault
+#   step 37: worker_deadlock
+
+name = "p15"
+seed = 114
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "worker_deadlock"
+at = 37

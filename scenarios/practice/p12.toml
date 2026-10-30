@@ -1,0 +1,13 @@
+# 1 fault
+#   step 37: rack_power rack=rack-b (needs a person)
+
+name = "p12"
+seed = 111
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "rack_power"
+at = 37
+[fault.params]
+rack = "rack-b"

@@ -1,0 +1,37 @@
+# 4 faults
+#   step 34: benign_change (red herring)
+#   step 37: bad_tokenizer on replica-2, replica-3 (silent)
+#   step 45: index_corruption (silent)
+#   step 53: bad_template on replica-4 (silent)
+#   step 57: bad_model (silent)
+
+name = "h24"
+seed = 1023
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "benign_change"
+at = 34
+
+[[fault]]
+name = "f2"
+kind = "bad_tokenizer"
+at = 37
+target = ["replica-2", "replica-3"]
+
+[[fault]]
+name = "f3"
+kind = "index_corruption"
+at = 45
+
+[[fault]]
+name = "f4"
+kind = "bad_template"
+at = 53
+target = ["replica-4"]
+
+[[fault]]
+name = "f5"
+kind = "bad_model"
+at = 57

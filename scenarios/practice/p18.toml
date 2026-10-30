@@ -1,0 +1,20 @@
+# 2 faults
+#   step 34: bad_tokenizer on replica-3 (silent)
+#   step 42: traffic_spike factor=1.7
+
+name = "p18"
+seed = 117
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_tokenizer"
+at = 34
+target = ["replica-3"]
+
+[[fault]]
+name = "f2"
+kind = "traffic_spike"
+at = 42
+[fault.params]
+factor = 1.7

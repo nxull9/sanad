@@ -1,0 +1,12 @@
+# 1 fault
+#   step 37: bad_model on replica-1, replica-2, replica-3 (silent)
+
+name = "h08"
+seed = 1007
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_model"
+at = 37
+target = ["replica-1", "replica-2", "replica-3"]

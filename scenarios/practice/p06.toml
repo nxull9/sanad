@@ -1,0 +1,11 @@
+# 1 fault
+#   step 34: bad_tokenizer (silent)
+
+name = "p06"
+seed = 105
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "bad_tokenizer"
+at = 34

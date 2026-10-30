@@ -1,0 +1,11 @@
+# 0 faults: a healthy control, the right answer is that nothing needs fixing
+#   step 31: benign_change (red herring)
+
+name = "h03"
+seed = 1002
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "benign_change"
+at = 31

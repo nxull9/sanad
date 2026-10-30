@@ -1,0 +1,13 @@
+# 1 fault
+#   step 36: traffic_spike factor=1.6
+
+name = "p14"
+seed = 113
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "traffic_spike"
+at = 36
+[fault.params]
+factor = 1.6

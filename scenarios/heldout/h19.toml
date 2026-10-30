@@ -1,0 +1,25 @@
+# 3 faults
+#   step 37: index_corruption (silent)
+#   step 44: traffic_spike factor=1.6
+#   step 47: bad_worker_concurrency
+
+name = "h19"
+seed = 1018
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "index_corruption"
+at = 37
+
+[[fault]]
+name = "f2"
+kind = "traffic_spike"
+at = 44
+[fault.params]
+factor = 1.6
+
+[[fault]]
+name = "f3"
+kind = "bad_worker_concurrency"
+at = 47

@@ -1,0 +1,19 @@
+# 2 faults
+#   step 34: traffic_spike factor=1.7
+#   step 39: worker_deadlock
+
+name = "h16"
+seed = 1015
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "traffic_spike"
+at = 34
+[fault.params]
+factor = 1.7
+
+[[fault]]
+name = "f2"
+kind = "worker_deadlock"
+at = 39

@@ -1,0 +1,12 @@
+# 1 fault
+#   step 35: replica_crash on replica-3
+
+name = "p13"
+seed = 112
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "replica_crash"
+at = 35
+target = ["replica-3"]

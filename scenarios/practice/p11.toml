@@ -1,0 +1,12 @@
+# 1 fault
+#   step 34: memory_leak on replica-4
+
+name = "p11"
+seed = 110
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "memory_leak"
+at = 34
+target = ["replica-4"]

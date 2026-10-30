@@ -1,0 +1,25 @@
+# 2 faults
+#   step 37: benign_change (red herring)
+#   step 38: memory_leak on replica-4
+#   step 39: low_memory_limit on replica-2
+
+name = "h15"
+seed = 1014
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "benign_change"
+at = 37
+
+[[fault]]
+name = "f2"
+kind = "memory_leak"
+at = 38
+target = ["replica-4"]
+
+[[fault]]
+name = "f3"
+kind = "low_memory_limit"
+at = 39
+target = ["replica-2"]

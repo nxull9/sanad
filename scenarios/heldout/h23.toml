@@ -1,0 +1,36 @@
+# 4 faults
+#   step 35: benign_change (red herring)
+#   step 38: index_corruption (silent)
+#   step 40: bad_gateway_timeout
+#   step 46: bad_template on replica-1, replica-2 (silent)
+#   step 51: low_memory_limit
+
+name = "h23"
+seed = 1022
+warmup = 30
+
+[[fault]]
+name = "f1"
+kind = "benign_change"
+at = 35
+
+[[fault]]
+name = "f2"
+kind = "index_corruption"
+at = 38
+
+[[fault]]
+name = "f3"
+kind = "bad_gateway_timeout"
+at = 40
+
+[[fault]]
+name = "f4"
+kind = "bad_template"
+at = 46
+target = ["replica-1", "replica-2"]
+
+[[fault]]
+name = "f5"
+kind = "low_memory_limit"
+at = 51
