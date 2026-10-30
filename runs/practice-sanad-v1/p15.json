@@ -1,0 +1,346 @@
+{
+ "score": {
+  "scenario": "p15",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 30,
+  "causes": [
+   {
+    "fault": "worker_deadlock",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 2,
+  "model_calls": 3,
+  "strong_calls": 3,
+  "cost": 0.000406,
+  "tokens_in": 68389,
+  "tokens_out": 15099,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "deadlock",
+      "component": [
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "workers log: waiting on dispatch_mutex at steps 37-39",
+       "queue backlog growing to 694 requests",
+       "all replicas slow because no work dispatched"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 40 restart -> partly_fixed",
+       "step 50 restart -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Workers appear deadlocked on dispatch_mutex; restart should clear the lock and resume dispatching.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "deadlock",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "worker pool restarting",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "stalled:workers"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Restarting workers cleared the stalled state but backlog and slow replicas remain; need to fully resolve the deadlock by restarting again to ensure all worker processes are fresh.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "deadlock",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "worker pool restarting",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "deadlock",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s",
+          "workers log: waiting on dispatch_mutex",
+          "queue backlog growing",
+          "all replicas slow due to no work"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "workers"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Workers appear deadlocked on dispatch_mutex; restart should clear the lock and resume dispatching."
+        }
+       ],
+       "summary": "Workers are stalled on dispatch_mutex causing queue backlog and replica slowness; restarting workers to clear the deadlock."
+      }
+     },
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "deadlock",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers log: waiting on dispatch_mutex",
+          "queue backlog growing",
+          "all replicas slow due to no work"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Check if the mutex wait persists after restart; if so, the deadlock is in the worker code and needs a different fix."
+        }
+       ],
+       "summary": "Workers still not dispatching after restart; investigating whether the dispatch_mutex deadlock persists to decide between rolling back worker config or escalating."
+      }
+     },
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "deadlock",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers log: waiting on dispatch_mutex at steps 37-39",
+          "queue backlog growing to 694 requests",
+          "all replicas slow because no work dispatched"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "workers"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Restarting workers cleared the stalled state but backlog and slow replicas remain; need to fully resolve the deadlock by restarting again to ensure all worker processes are fresh."
+        }
+       ],
+       "summary": "Restarting workers again to fully clear the dispatch_mutex deadlock that persists after the first restart."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 2,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 62,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.007526488300000001,
+  "calls": 37,
+  "tokens_in": 68389,
+  "tokens_out": 15099
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "worker_deadlock",
+   "step": 37,
+   "target": [
+    "workers"
+   ],
+   "cause": "worker dispatcher deadlocked on dispatch_mutex",
+   "fix": "restart:workers",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

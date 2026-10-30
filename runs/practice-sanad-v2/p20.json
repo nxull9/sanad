@@ -1,0 +1,573 @@
+{
+ "score": {
+  "scenario": "p20",
+  "faults": 3,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 230,
+  "causes": [
+   {
+    "fault": "bad_template",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "gpu_thermal",
+    "target": [
+     "gpu-2"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-1"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 3,
+  "strong_calls": 0,
+  "cost": 0.00037,
+  "tokens_in": 71213,
+  "tokens_out": 14440,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "All replicas updated to template chat-tpl-13 at step 37.",
+       "All replicas now fail canary questions requiring strict JSON format, outputting conversational filler instead.",
+       "Previous template was chat-tpl-12."
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 40 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-2"
+      ],
+      "setting": null,
+      "explains": [
+       "hot:gpu-2",
+       "slow:gateway",
+       "slow:replica-2"
+      ],
+      "evidence": [
+       "gpu-2 at 90 C, clock 891 MHz (normal under 80 C, 1980 MHz)",
+       "WARN gpu-2: GPU temperature 91C, clocks throttled (HW slowdown: thermal)",
+       "replica-2 is on gpu-2 and shows high latency matching the throttle"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 48 drain -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "crash",
+      "component": [
+       "replica-1"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-1"
+      ],
+      "evidence": [
+       "ERROR replica-1: segfault in attention kernel; process exited with code 139",
+       "replica-1 node gpu-1 shows no hardware trouble indicators"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 58 restart -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The recent change to template chat-tpl-13 caused all replicas to fail format-sensitive canary questions. Rolling back to the previous working template should restore correct behavior.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back template on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 48,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 48,
+      "action": "drain",
+      "args": {
+       "node": "gpu-2"
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Move replica-2 off overheating node to restore performance and prevent hardware damage; use spare node gpu-5 or gpu-6",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-2"
+       ]
+      },
+      "result": "replica-2 moving gpu-2 -> gpu-5; gpu-2 drained",
+      "verified": {
+       "step": 58,
+       "cleared": [
+        "hot:gpu-2",
+        "slow:gateway",
+        "slow:replica-2"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 58,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Replica-1 crashed with a segfault (exit code 139). Restarting the process should restore it to service as the node hardware is healthy.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "crash",
+       "setting": null,
+       "component": [
+        "replica-1"
+       ]
+      },
+      "result": "replica-1 restarting",
+      "verified": {
+       "step": 68,
+       "cleared": [
+        "down:replica-1"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas updated to template chat-tpl-13 at step 37.",
+          "All replicas now fail canary questions requiring strict JSON format, outputting conversational filler instead.",
+          "Previous template was chat-tpl-12."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The recent change to template chat-tpl-13 caused all replicas to fail format-sensitive canary questions. Rolling back to the previous working template should restore correct behavior."
+        }
+       ],
+       "summary": "Suspect bad config from template update (chat-tpl-13) causing formatting failures on all replicas; rolling back to chat-tpl-12."
+      }
+     },
+     {
+      "step": 48,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "hot:gpu-2",
+       "slow:gateway",
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas updated to template chat-tpl-13 at step 37.",
+          "All replicas now fail canary questions requiring strict JSON format, outputting conversational filler instead.",
+          "Previous template was chat-tpl-12."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-2"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-2",
+          "slow:gateway",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "gpu-2 at 90 C, clock 891 MHz (normal under 80 C, 1980 MHz)",
+          "WARN gpu-2: GPU temperature 91C, clocks throttled (HW slowdown: thermal)",
+          "replica-2 is on gpu-2 and shows high latency matching the throttle"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-2"
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Move replica-2 off overheating node to restore performance and prevent hardware damage; use spare node gpu-5 or gpu-6"
+        }
+       ],
+       "summary": "Thermal throttling on gpu-2 is causing high latency for replica-2 and contributing to gateway slowness; draining the node will migrate the workload to a healthy node."
+      }
+     },
+     {
+      "step": 58,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas updated to template chat-tpl-13 at step 37.",
+          "All replicas now fail canary questions requiring strict JSON format, outputting conversational filler instead.",
+          "Previous template was chat-tpl-12."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-2"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-2",
+          "slow:gateway",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "gpu-2 at 90 C, clock 891 MHz (normal under 80 C, 1980 MHz)",
+          "WARN gpu-2: GPU temperature 91C, clocks throttled (HW slowdown: thermal)",
+          "replica-2 is on gpu-2 and shows high latency matching the throttle"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "crash",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-1"
+         ],
+         "evidence": [
+          "ERROR replica-1: segfault in attention kernel; process exited with code 139",
+          "replica-1 node gpu-1 shows no hardware trouble indicators"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "replica-1"
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Replica-1 crashed with a segfault (exit code 139). Restarting the process should restore it to service as the node hardware is healthy."
+        }
+       ],
+       "summary": "Restarting replica-1 to recover from the segfault crash observed in logs."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 70,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.005192481300000001,
+  "calls": 38,
+  "tokens_in": 71213,
+  "tokens_out": 14440
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_template",
+   "step": 37,
+   "target": [],
+   "cause": "template chat-tpl-13 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:template",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "gpu_thermal",
+   "step": 43,
+   "target": [
+    "gpu-2"
+   ],
+   "cause": "gpu-2 fan failure: thermal throttling",
+   "fix": "drain:gpu-2",
+   "fixable": true,
+   "needs_human": "replace the fan on the node",
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "replica_crash",
+   "step": 49,
+   "target": [
+    "replica-1"
+   ],
+   "cause": "replica-1 crashed and did not come back",
+   "fix": "restart:replica-1",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "chat template refresh"
+  },
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-13",
+   "new": "chat-tpl-12",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

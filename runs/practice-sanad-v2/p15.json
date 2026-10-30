@@ -1,0 +1,378 @@
+{
+ "score": {
+  "scenario": "p15",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 30,
+  "causes": [
+   {
+    "fault": "worker_deadlock",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 1,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.000223,
+  "tokens_in": 50173,
+  "tokens_out": 10225,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "deadlock",
+      "component": [
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "stalled:workers",
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+       "queue backlog 2493 requests",
+       "all replicas slow",
+       "gateway timeouts"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 40 restart -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "overload",
+      "component": [
+       "workers",
+       "queue"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "incoming traffic 1.07x normal",
+       "all replicas slow (fleet average ~7300ms vs normal 3651ms)",
+       "queue backlog 694 requests",
+       "workers dispatcher stalled previously but now cleared, yet queue still backs up due to slow processing"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 50 scale_out -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "unknown",
+      "component": [
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "all replicas show significantly increased p95 latency (~2x normal)",
+       "no config changes detected",
+       "no hardware errors reported"
+      ],
+      "confidence": 0.5,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Workers dispatcher is stuck on dispatch_mutex, causing zero dispatch and cascading backlog and slowness; restart workers to clear the deadlock.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "deadlock",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "worker pool restarting",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "stalled:workers"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Traffic is slightly above normal but all replicas are twice as slow, causing queue buildup and gateway timeouts. Adding capacity will help absorb the backlog and reduce per-replica load.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "deadlock",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "stalled:workers",
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue backlog 2493 requests",
+          "all replicas slow",
+          "gateway timeouts"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "workers"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Workers dispatcher is stuck on dispatch_mutex, causing zero dispatch and cascading backlog and slowness; restart workers to clear the deadlock."
+        }
+       ],
+       "summary": "Workers dispatcher appears deadlocked on dispatch_mutex, halting all request flow; restarting workers to restore dispatch."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 1.07x normal",
+          "all replicas slow (fleet average ~7300ms vs normal 3651ms)",
+          "queue backlog 694 requests",
+          "workers dispatcher stalled previously but now cleared, yet queue still backs up due to slow processing"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "all replicas show significantly increased p95 latency (~2x normal)",
+          "no config changes detected",
+          "no hardware errors reported"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is slightly above normal but all replicas are twice as slow, causing queue buildup and gateway timeouts. Adding capacity will help absorb the backlog and reduce per-replica load."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replicas",
+          "contains": "memory"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Need to check if high memory usage or OOM events on replicas could explain the uniform slowdown across all nodes."
+        }
+       ],
+       "summary": "Scaling out by 2 replicas to handle the queue backlog caused by uniformly slow replica performance, while investigating logs for potential memory issues on replicas."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 62,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0039157001,
+  "calls": 27,
+  "tokens_in": 50173,
+  "tokens_out": 10225
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "worker_deadlock",
+   "step": 37,
+   "target": [
+    "workers"
+   ],
+   "cause": "worker dispatcher deadlocked on dispatch_mutex",
+   "fix": "restart:workers",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

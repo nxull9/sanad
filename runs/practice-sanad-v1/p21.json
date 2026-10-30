@@ -1,0 +1,941 @@
+{
+ "score": {
+  "scenario": "p21",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 420,
+  "causes": [
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-1"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 1,
+  "model_calls": 9,
+  "strong_calls": 8,
+  "cost": 0.002045,
+  "tokens_in": 158012,
+  "tokens_out": 42108,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "overload",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "workers max_concurrency changed 64->4 at step 38",
+       "workers dispatching 16 req/s vs normal 181",
+       "all replicas slow, queue backlog growing"
+      ],
+      "confidence": 0.0,
+      "attempts": 1,
+      "history": [
+       "step 42 restart -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "workers max_concurrency changed 64->4 at step 38",
+       "workers dispatching 16 req/s vs normal 181",
+       "gateway timeouts after 30000ms",
+       "all replicas slow, queue backlog growing",
+       "queue full: dropped 3263 requests in last 3 steps"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [
+       "step 52 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Workers may be stuck with low concurrency; restart to reapply settings and clear any stuck state.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "worker pool restarting",
+      "verified": {
+       "step": 52,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4",
+        "stalled:workers"
+       ]
+      }
+     },
+     {
+      "step": 52,
+      "action": "rollback",
+      "args": {
+       "key": "max_concurrency",
+       "replicas": []
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Restart did not fix; the root cause is the max_concurrency reduction to 4, which throttles workers. Rolling back to 64 should restore throughput.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "workers max_concurrency 4 -> 64",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "drops:queue",
+        "errors:gateway",
+        "stalled:workers"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, queue backlog growing"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "workers"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Workers may be stuck with low concurrency; restart to reapply settings and clear any stuck state."
+        }
+       ],
+       "summary": "Suspect the recent max_concurrency reduction to 4 is throttling workers, causing queue backlog and replica slowness; restart workers to see if it recovers."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, queue backlog growing",
+          "queue full: dropped 3263 requests in last 3 steps"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "max_concurrency",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Restart did not fix; the root cause is the max_concurrency reduction to 4, which throttles workers. Rolling back to 64 should restore throughput."
+        }
+       ],
+       "summary": "Roll back workers max_concurrency from 4 to 64 to resolve queue backlog, gateway errors, and replica slowdowns caused by the change at step 38."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "all replicas slow, queue backlog growing"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replicas",
+          "contains": "gpu"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "All replicas slow despite max_concurrency rollback; check GPU utilization/temperature for shared cause."
+        }
+       ],
+       "summary": "Rollback of max_concurrency cleared drops/errors/stalled but all replicas remain slow with queue backlog, so investigating GPU-level shared cause."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "all replicas slow, queue backlog growing"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, queue backlog growing",
+          "queue full: dropped 3263 requests in last 3 steps"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replicas",
+          "contains": "p95 latency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "rollback cleared drops/errors/stalled but replicas still slow; need to see if replicas are CPU/GPU bound or if vectordb is the bottleneck"
+        }
+       ],
+       "summary": "Rollback of max_concurrency cleared drops and errors but replicas remain slow; inspecting replica metrics to find remaining bottleneck."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "all replicas slow, queue backlog growing"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, queue backlog growing",
+          "queue full: dropped 3263 requests in last 3 steps"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatching"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "After rollback, workers max_concurrency is 64 but dispatching is still low (16 req/s). Need to check if workers are actually processing requests or if there is another bottleneck."
+        }
+       ],
+       "summary": "Rollback of max_concurrency to 64 did not restore throughput; workers still dispatching only 16 req/s, so investigating worker metrics to find the real bottleneck."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "all replicas slow, queue backlog growing"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, queue backlog growing",
+          "queue full: dropped 3263 requests in last 3 steps"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatching"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "After rollback, workers dispatching rate is still low (16 req/s vs normal 181). Need to check if workers are still throttled or if there is another issue."
+        }
+       ],
+       "summary": "Rollback of max_concurrency to 64 did not restore normal throughput; workers still dispatching only 16 req/s, indicating a residual issue possibly in worker health or queue draining."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "all replicas slow, queue backlog growing"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, queue backlog growing",
+          "queue full: dropped 3263 requests in last 3 steps"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "error"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Rollback of max_concurrency to 64 did not fully fix; workers dispatch rate is still low (16 vs 181). Check for errors or stuck workers."
+        }
+       ],
+       "summary": "Rollback of max_concurrency to 64 did not restore dispatch rate; investigating worker logs for errors or stuck processes."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "all replicas slow, queue backlog growing"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "workers dispatching 16 req/s vs normal 181",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, queue backlog growing",
+          "queue full: dropped 3263 requests in last 3 steps"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "error"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "After rollback, symptoms persist; check if workers have errors that explain continued slowness."
+        }
+       ],
+       "summary": "Rollback of max_concurrency to 64 partly fixed but symptoms persist; inspecting worker logs for errors."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 66,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 76,
+    "first_symptoms": [
+     "down:replica-1",
+     "restarting:replica-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "replica-1"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-1",
+       "restarting:replica-1"
+      ],
+      "evidence": [
+       "ERROR replica-1: segfault in attention kernel; process exited with code 139"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 76 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 76,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Replica-1 is crashing due to a GPU segfault on node gpu-1. Draining moves the workload to a healthy spare node (gpu-5 or gpu-6) and isolates the faulty hardware.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "replica-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 86,
+       "cleared": [
+        "down:replica-1",
+        "restarting:replica-1"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 76,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-1",
+       "restarting:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-1",
+          "restarting:replica-1"
+         ],
+         "evidence": [
+          "ERROR replica-1: segfault in attention kernel; process exited with code 139"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Replica-1 is crashing due to a GPU segfault on node gpu-1. Draining moves the workload to a healthy spare node (gpu-5 or gpu-6) and isolates the faulty hardware."
+        }
+       ],
+       "summary": "Isolating faulty GPU node gpu-1 which is causing replica-1 to crash via segfaults."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 88,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.019133179900000002,
+  "calls": 80,
+  "tokens_in": 158012,
+  "tokens_out": 42108
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_worker_concurrency",
+   "step": 38,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "replica_crash",
+   "step": 72,
+   "target": [
+    "replica-1"
+   ],
+   "cause": "replica-1 crashed and did not come back",
+   "fix": "restart:replica-1",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  },
+  {
+   "step": 52,
+   "time": "2026-10-30T09:08:40",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 4,
+   "new": 64,
+   "scope": [
+    "workers"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

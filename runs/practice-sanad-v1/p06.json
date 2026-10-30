@@ -1,0 +1,263 @@
+{
+ "score": {
+  "scenario": "p06",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 40,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 1,
+  "cost": 0.000295,
+  "tokens_in": 7079,
+  "tokens_out": 1573,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "long_answers:replica-1",
+     "long_answers:replica-2",
+     "long_answers:replica-3",
+     "long_answers:replica-4",
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "long_answers:replica-1",
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "long_answers:replica-4",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "All replicas have tokenizer=tok-2.2-beta changed at step 34",
+       "All replicas show long answers (447,408,464,414 vs 181 normal)",
+       "All replicas show Arabic wrong answers with garbled output (mojibake), English fine",
+       "Tokenizer change is the only recent change affecting all replicas"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 38 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Roll back tokenizer from tok-2.2-beta to tok-2.1 on all replicas to fix Arabic garbled output and long answers",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "tokenizer",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 46,
+       "cleared": [
+        "long_answers:replica-1",
+        "long_answers:replica-2",
+        "long_answers:replica-3",
+        "long_answers:replica-4",
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "long_answers:replica-1",
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "long_answers:replica-4",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-1",
+          "long_answers:replica-2",
+          "long_answers:replica-3",
+          "long_answers:replica-4",
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas have tokenizer=tok-2.2-beta changed at step 34",
+          "All replicas show long answers (447,408,464,414 vs 181 normal)",
+          "All replicas show Arabic wrong answers with garbled output (mojibake), English fine",
+          "Tokenizer change is the only recent change affecting all replicas"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Roll back tokenizer from tok-2.2-beta to tok-2.1 on all replicas to fix Arabic garbled output and long answers"
+        }
+       ],
+       "summary": "Rolling back tokenizer to tok-2.1 on all replicas to resolve Arabic mojibake and excessive answer length caused by the beta tokenizer upgrade."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 48,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0006087219999999999,
+  "calls": 4,
+  "tokens_in": 7079,
+  "tokens_out": 1573
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_tokenizer",
+   "step": 34,
+   "target": [],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

@@ -1,0 +1,263 @@
+{
+ "score": {
+  "scenario": "p06",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 40,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 0.000128,
+  "tokens_in": 9505,
+  "tokens_out": 2147,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "long_answers:replica-1",
+     "long_answers:replica-2",
+     "long_answers:replica-3",
+     "long_answers:replica-4",
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "long_answers:replica-1",
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "long_answers:replica-4",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Change log step 34: tokenizer upgraded to tok-2.2-beta on all replicas.",
+       "All replicas show identical wrong answers in Arabic (repeating prompt) and long answers.",
+       "English answers are fine, suggesting the issue is specific to Arabic tokenization/decoding with the new tokenizer.",
+       "The error pattern (repeating the question) is characteristic of tokenizer mismatch or generation loop issues."
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 38 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback the bad tokenizer release that caused Arabic generation failures and long answers across all replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "tokenizer",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 46,
+       "cleared": [
+        "long_answers:replica-1",
+        "long_answers:replica-2",
+        "long_answers:replica-3",
+        "long_answers:replica-4",
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "long_answers:replica-1",
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "long_answers:replica-4",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-1",
+          "long_answers:replica-2",
+          "long_answers:replica-3",
+          "long_answers:replica-4",
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Change log step 34: tokenizer upgraded to tok-2.2-beta on all replicas.",
+          "All replicas show identical wrong answers in Arabic (repeating prompt) and long answers.",
+          "English answers are fine, suggesting the issue is specific to Arabic tokenization/decoding with the new tokenizer.",
+          "The error pattern (repeating the question) is characteristic of tokenizer mismatch or generation loop issues."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback the bad tokenizer release that caused Arabic generation failures and long answers across all replicas."
+        }
+       ],
+       "summary": "Suspect the recent tokenizer upgrade (tok-2.2-beta) caused Arabic generation loops and incorrect outputs; rolling back all replicas to the previous tokenizer."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 48,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0006105845,
+  "calls": 5,
+  "tokens_in": 9505,
+  "tokens_out": 2147
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_tokenizer",
+   "step": 34,
+   "target": [],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

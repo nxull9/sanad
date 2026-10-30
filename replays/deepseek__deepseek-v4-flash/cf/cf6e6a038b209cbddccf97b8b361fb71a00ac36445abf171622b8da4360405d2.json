@@ -1,0 +1,116 @@
+{
+ "model": "deepseek/deepseek-v4-flash",
+ "request": {
+  "model": "deepseek/deepseek-v4-flash",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Sanad, the on-call agent for an AI serving platform that answers users in Arabic and English.\nRequests flow: gateway -> identity-service (owned by the identity team, not you) -> queue -> workers -> model replicas (one per GPU node) -> vector database.\n\nEach turn you get the open symptoms (found by monitoring code), the evidence, your ledger of hypotheses, and what your last actions did. Monitoring code, not you, decides whether a fix worked.\n\nHow to work:\n- Several causes can be active at once. Keep one hypothesis per cause. Every open symptom must appear in `explains` of a hypothesis that is not ruled_out.\n- Back each hypothesis with concrete evidence: a metric, a log line, a change log entry, a canary answer.\n- The most recent change is not always the cause. A change can only explain symptoms on what it touched, starting after it was made.\n- Canary questions are asked of each replica separately. If only replicas with a certain setting answer wrongly, suspect that setting. If every replica fails the same kind of question, suspect what they share, such as the vector database. If one replica fails while its settings match healthy ones, suspect its GPU node.\n- Restarting does not undo a bad deploy; rolling back does. Roll back only the replicas that carry the bad value.\n- Overload: when incoming traffic is well above normal and every replica is slow or the queue backs up, add capacity with scale_out. set_weight only moves load between replicas; it adds none.\n- A replica that crashed (segfault, non-zero exit) while its node shows no hardware trouble (no ECC errors, normal temperature) needs a restart. Drain a node only when the node itself shows hardware trouble.\n- A symptom that follows from a cause already in your ledger (for example, lost capacity after hardware went down) belongs in that hypothesis's explains, not in a new cause.\n- Change only what the evidence points at. Leave healthy components alone.\n- Some causes are not yours to fix: another team's service, hardware that needs hands, power. Mitigate what you safely can, then escalate with a clear summary.\n- If a fix did not clear its symptoms, revise the hypothesis rather than repeat the fix.\n\nActions (one to three per turn):\n- rollback {\"key\": setting, \"replicas\": [...]} returns a setting to its previous value. Replica settings: model_version, template, quantization, tokenizer, server_build, memory_limit_gb (give \"replicas\"). Gateway: timeout_ms, log_level. Workers: max_concurrency (no \"replicas\").\n- restart {\"target\": \"replica-N\" or \"workers\"}\n- drain {\"node\": \"gpu-N\"} moves that node's replica to a spare node and takes the node out of service.\n- set_weight {\"replica\": \"replica-N\", \"weight\": 0 to 1} sends less or no traffic to a replica. Undoable.\n- scale_out {\"count\": 1 or 2} adds replicas on spare nodes.\n- failover_vectordb {} switches to the standby vector database.\n- rebuild_index {} rebuilds the active vector index (about 200 s).\n- escalate {\"team\": \"...\", \"summary\": \"...\"} hands a cause to people.\n- inspect {\"what\": \"logs\" or \"metrics\" or \"canaries\", \"component\": \"...\", \"contains\": \"...\"} reads more and changes nothing.\n- wait {} changes nothing.\n\nReply with JSON only:\n{\"ledger\": [{\"id\": \"H1\", \"type\": TYPE, \"component\": [\"...\"], \"setting\": \"setting key or null\", \"explains\": [\"symptom keys\"], \"evidence\": [\"short facts\"], \"status\": \"suspected\" or \"ruled_out\", \"confidence\": 0.0 to 1.0}],\n \"actions\": [{\"action\": \"...\", \"args\": {}, \"hypothesis\": \"H1\", \"purpose\": \"fix\" or \"experiment\" or \"investigate\" or \"escalate\", \"why\": \"short reason\"}],\n \"summary\": \"one sentence\"}\nTYPE is one of: bad_release, bad_config, crash, deadlock, overload, gpu_overheating, gpu_silent_corruption, index_corruption, external_dependency, power_failure, unknown."
+   },
+   {
+    "role": "user",
+    "content": "STEP 130. Incident opened at step 42. Each step is 10 seconds.\n\nOPEN SYMPTOMS\n- (handed to people) down:replica-4: replica-4 down for the last 3 steps\n- (UNEXPLAINED) slow:gateway: p95 latency 5849 ms (normal 3690 ms)\n- slow:replica-1: replica-1 p95 latency 5921 ms (fleet normal 3640 ms)\n- slow:replica-2: replica-2 p95 latency 5714 ms (fleet normal 3640 ms)\n- slow:replica-3: replica-3 p95 latency 5806 ms (fleet normal 3640 ms)\n- (handed to people) unreachable:gpu-4: gpu-4 (rack-b) sends no telemetry: temperature and clock read 0\n- (handed to people) unreachable:gpu-5: gpu-5 (rack-b) sends no telemetry: temperature and clock read 0\n- (handed to people) unreachable:gpu-6: gpu-6 (rack-b) sends no telemetry: temperature and clock read 0\n\nYOUR LEDGER\n- H1 power_failure setting=None on ['gpu-4', 'gpu-5', 'gpu-6'] status=escalated explains=['unreachable:gpu-4', 'unreachable:gpu-5', 'unreachable:gpu-6', 'down:replica-4'] evidence=['BMC reports PSU fault on rack-b for gpu-4 and gpu-5', 'gpu-4, gpu-5, gpu-6 are all in rack-b', 'All three GPUs send no telemetry (temp/clock 0)', 'replica-4 is down because its node gpu-4 is unreachable']\n- H2 overload setting=None on ['replica-1', 'replica-2', 'replica-3'] status=suspected explains=['slow:replica-1', 'slow:replica-2', 'slow:replica-3'] evidence=['incoming traffic 139 req/s (1.14x normal)', 'p95 latency on all three remaining replicas ~5700 ms vs fleet normal 3640 ms', 'lost replica-4 capacity due to power failure, remaining replicas carry extra load']\n\nYOUR RECENT ACTIONS\n- step 42 drain {\"node\": \"gpu-4\"} for H1: no spare GPU node to move to\n- step 42 escalate {\"team\": \"infrastructure-hardware\", \"summary\": \"Rack-B power supply unit failure detected. Nodes gpu-4, gpu-5, and gpu-6 are unreachable with zero telemetry. BMC confirms PSU fault. Hardware team required for physical intervention.\"} for H1: handed to infrastructure-hardware\n- step 128 scale_out {\"count\": 2} for H2: no spare GPU node to scale onto\n\nPLATFORM\npath: gateway -> identity-service (external, owned by identity team) -> queue -> workers -> replicas -> vectordb\nreplica-1: node gpu-1, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-2: node gpu-2, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-3: node gpu-3, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-4: node gpu-4, DOWN, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nnodes: gpu-1 rack-a, gpu-2 rack-a, gpu-3 rack-a, gpu-4 rack-b, gpu-5 rack-b, gpu-6 rack-b; spare: gpu-5, gpu-6\ngateway: {'timeout_ms': 30000, 'log_level': 'info'}; workers: {'max_concurrency': 64, 'count': 8}; vectordb: {'active': 'primary', 'rebuilding': False}\nincoming traffic: 132 req/s, 1.08x normal\n\nCHANGE LOG (newest last)\n(none)\n\nLOG LINES NOT SEEN BEFORE THE INCIDENT (since step 36; count, first step, example)\n1x from step 37 ERROR replica-4: lost connection to gpu-4\n45x from step 37 ERROR gpu-4: node unreachable; BMC reports PSU fault on rack-b\n42x from step 37 ERROR gpu-5: node unreachable; BMC reports PSU fault on rack-b\n43x from step 42 ERROR gpu-6: node unreachable; BMC reports PSU fault on rack-b\n\nALLOWANCE LEFT: 10 turns, 10 changes. Mode: autonomous."
+   }
+  ],
+  "temperature": 0,
+  "max_tokens": 1500,
+  "response_format": {
+   "type": "json_object"
+  },
+  "reasoning": {
+   "enabled": false
+  },
+  "usage": {
+   "include": true
+  }
+ },
+ "text": "{\"ledger\": [\n  {\n    \"id\": \"H1\",\n    \"type\": \"power_failure\",\n    \"component\": [\"gpu-4\", \"gpu-5\", \"gpu-6\"],\n    \"setting\": null,\n    \"explains\": [\"unreachable:gpu-4\", \"unreachable:gpu-5\", \"unreachable:gpu-6\", \"down:replica-4\"],\n    \"evidence\": [\"BMC reports PSU fault on rack-b for gpu-4 and gpu-5\", \"gpu-4, gpu-5, gpu-6 are all in rack-b\", \"All three GPUs send no telemetry (temp/clock 0)\", \"replica-4 is down because its node gpu-4 is unreachable\"],\n    \"status\": \"escalated\",\n    \"confidence\": 0.95\n  },\n  {\n    \"id\": \"H2\",\n    \"type\": \"overload\",\n    \"component\": [\"replica-1\", \"replica-2\", \"replica-3\"],\n    \"setting\": null,\n    \"explains\": [\"slow:replica-1\", \"slow:replica-2\", \"slow:replica-3\"],\n    \"evidence\": [\"incoming traffic 132 req/s (1.08x normal)\", \"p95 latency on all three remaining replicas ~5700 ms vs fleet normal 3640 ms\", \"lost replica-4 capacity due to power failure, remaining replicas carry extra load\"],\n    \"status\": \"suspected\",\n    \"confidence\": 0.7\n  }\n],\n\"actions\": [\n  {\n    \"action\": \"inspect\",\n    \"args\": {\"what\": \"metrics\", \"component\": \"replica-1\", \"contains\": \"queue\"},\n    \"hypothesis\": \"H2\",\n    \"purpose\": \"investigate\",\n    \"why\": \"Check if the slowness is due to queue backlog or GPU compute saturation before deciding on further actions.\"\n  }\n],\n\"summary\": \"Power failure in rack-b has taken down replica-4 and left three replicas overloaded; investigating queue metrics to confirm overload before attempting any mitigation.\"}",
+ "reply": {
+  "ledger": [
+   {
+    "id": "H1",
+    "type": "power_failure",
+    "component": [
+     "gpu-4",
+     "gpu-5",
+     "gpu-6"
+    ],
+    "setting": null,
+    "explains": [
+     "unreachable:gpu-4",
+     "unreachable:gpu-5",
+     "unreachable:gpu-6",
+     "down:replica-4"
+    ],
+    "evidence": [
+     "BMC reports PSU fault on rack-b for gpu-4 and gpu-5",
+     "gpu-4, gpu-5, gpu-6 are all in rack-b",
+     "All three GPUs send no telemetry (temp/clock 0)",
+     "replica-4 is down because its node gpu-4 is unreachable"
+    ],
+    "status": "escalated",
+    "confidence": 0.95
+   },
+   {
+    "id": "H2",
+    "type": "overload",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3"
+    ],
+    "setting": null,
+    "explains": [
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3"
+    ],
+    "evidence": [
+     "incoming traffic 132 req/s (1.08x normal)",
+     "p95 latency on all three remaining replicas ~5700 ms vs fleet normal 3640 ms",
+     "lost replica-4 capacity due to power failure, remaining replicas carry extra load"
+    ],
+    "status": "suspected",
+    "confidence": 0.7
+   }
+  ],
+  "actions": [
+   {
+    "action": "inspect",
+    "args": {
+     "what": "metrics",
+     "component": "replica-1",
+     "contains": "queue"
+    },
+    "hypothesis": "H2",
+    "purpose": "investigate",
+    "why": "Check if the slowness is due to queue backlog or GPU compute saturation before deciding on further actions."
+   }
+  ],
+  "summary": "Power failure in rack-b has taken down replica-4 and left three replicas overloaded; investigating queue metrics to confirm overload before attempting any mitigation."
+ },
+ "usage": {
+  "prompt_tokens": 2205,
+  "completion_tokens": 472,
+  "total_tokens": 2677,
+  "cost": 0.0001501318,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 1874,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.0001501318,
+   "upstream_inference_prompt_cost": 6.42278e-05,
+   "upstream_inference_completions_cost": 8.5904e-05
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ },
+ "cost": 0.0001501318
+}

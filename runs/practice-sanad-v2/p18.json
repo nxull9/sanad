@@ -1,0 +1,388 @@
+{
+ "score": {
+  "scenario": "p18",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 160,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 0,
+  "cost": 0.000204,
+  "tokens_in": 61617,
+  "tokens_out": 12415,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "long_answers:replica-3",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-3"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "wrong_answers:replica-3",
+       "long_answers:replica-3"
+      ],
+      "evidence": [
+       "Fixed in step 38, symptoms cleared for this hypothesis"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 38 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "Incoming traffic is 211 req/s (1.72x normal)",
+       "All replicas are slow simultaneously",
+       "Queue backlog is growing (915 requests)"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 46 scale_out -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Roll back the suspect tokenizer change on replica-3 to restore correct behavior.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "tokenizer",
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-3']",
+      "verified": {
+       "step": 46,
+       "cleared": [
+        "long_answers:replica-3",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 46,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Traffic is 1.72x normal and queue is backing up; adding capacity to handle the load surge",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 56,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "long_answers:replica-3",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "wrong_answers:replica-3",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-3 is the only replica using tokenizer tok-2.2-beta (others use tok-2.1)",
+          "Change log shows tok-2.1 -> tok-2.2-beta deployed to replica-3 at step 34",
+          "Wrong answers are in Arabic, suggesting tokenization/decoding issues with new vocab",
+          "Long answers suggest generation loop or poor token probability distribution due to mismatched tokenizer"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Roll back the suspect tokenizer change on replica-3 to restore correct behavior."
+        }
+       ],
+       "summary": "Suspect the recent tokenizer upgrade on replica-3 causing Arabic decoding errors and long outputs; rolling it back."
+      }
+     },
+     {
+      "step": 46,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "Fixed in step 38, symptoms cleared for this hypothesis"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 211 req/s (1.72x normal)",
+          "All replicas are slow simultaneously",
+          "Queue backlog is growing (915 requests)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Traffic is 1.72x normal and queue is backing up; adding capacity to handle the load surge"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Verify if workers are saturated at current concurrency limit"
+        }
+       ],
+       "summary": "Suspected overload due to 1.72x traffic spike causing queue backup and latency across all replicas; scaling out by 2 replicas to increase capacity."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 58,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.004592035800000001,
+  "calls": 33,
+  "tokens_in": 61617,
+  "tokens_out": 12415
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_tokenizer",
+   "step": 34,
+   "target": [
+    "replica-3"
+   ],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-3",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 42,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

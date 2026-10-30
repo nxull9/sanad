@@ -1,0 +1,226 @@
+{
+ "score": {
+  "scenario": "p08",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 40,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-2"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 9.8e-05,
+  "tokens_in": 17720,
+  "tokens_out": 3339,
+  "escalations": [
+   {
+    "step": 42,
+    "team": "hardware-team",
+    "summary": "GPU gpu-2 has persistent ECC errors causing silent corruption in replica-2. Node drained for mitigation. Hardware inspection required.",
+    "hypothesis": "H1",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "ecc:gpu-2",
+     "wrong_answers:replica-2"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "replica-2"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-2",
+       "ecc:gpu-2"
+      ],
+      "evidence": [
+       "replica-2 is the only replica producing wrong answers",
+       "gpu-2 (hosting replica-2) logged ECC errors (Xid 94)",
+       "ECC errors can cause silent data corruption in GPU memory, leading to incorrect inference results without crashing the process"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 42 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "drain",
+      "args": {
+       "node": "gpu-2"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Move replica-2 off the faulty GPU node to a healthy spare node to restore correct answering capability and isolate the hardware issue.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "replica-2"
+       ]
+      },
+      "result": "replica-2 moving gpu-2 -> gpu-5; gpu-2 drained",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "ecc:gpu-2",
+        "wrong_answers:replica-2"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 42,
+      "action": "escalate",
+      "args": {
+       "team": "hardware-team",
+       "summary": "GPU gpu-2 has persistent ECC errors causing silent corruption in replica-2. Node drained for mitigation. Hardware inspection required."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Hardware failure requires physical intervention or replacement; cannot be fixed by software rollback.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "replica-2"
+       ]
+      },
+      "result": "handed to hardware-team"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "ecc:gpu-2",
+       "wrong_answers:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-2"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-2",
+          "ecc:gpu-2"
+         ],
+         "evidence": [
+          "replica-2 is the only replica producing wrong answers",
+          "gpu-2 (hosting replica-2) logged ECC errors (Xid 94)",
+          "ECC errors can cause silent data corruption in GPU memory, leading to incorrect inference results without crashing the process"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-2"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Move replica-2 off the faulty GPU node to a healthy spare node to restore correct answering capability and isolate the hardware issue."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "hardware-team",
+          "summary": "GPU gpu-2 has persistent ECC errors causing silent corruption in replica-2. Node drained for mitigation. Hardware inspection required."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Hardware failure requires physical intervention or replacement; cannot be fixed by software rollback."
+        }
+       ],
+       "summary": "Suspect GPU hardware failure on gpu-2 causing silent corruption; draining node to restore service and escalating to hardware team."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 42,
+      "team": "hardware-team",
+      "summary": "GPU gpu-2 has persistent ECC errors causing silent corruption in replica-2. Node drained for mitigation. Hardware inspection required.",
+      "hypothesis": "H1",
+      "automatic": false
+     }
+    ],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 54,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0014853868999999999,
+  "calls": 10,
+  "tokens_in": 17720,
+  "tokens_out": 3339
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "gpu_corruption",
+   "step": 38,
+   "target": [
+    "gpu-2"
+   ],
+   "cause": "gpu-2 silent data corruption",
+   "fix": "drain:gpu-2",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  }
+ ],
+ "changes": []
+}

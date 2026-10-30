@@ -1,0 +1,175 @@
+{
+ "score": {
+  "scenario": "p13",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 70,
+  "causes": [
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 9.3e-05,
+  "tokens_in": 47767,
+  "tokens_out": 10806,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "down:replica-3",
+     "restarting:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "crash",
+      "component": [
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "evidence": [
+       "Log line at step 35: 'ERROR replica-3: segfault in attention kernel; process exited with code 139'"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 38 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "drain",
+      "args": {
+       "node": "gpu-3"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Replica-3 on gpu-3 is crashing due to a segfault. Draining the node will move the workload to a healthy spare node (gpu-5 or gpu-6) and isolate the faulty hardware/software state.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "crash",
+       "setting": null,
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "replica-3 moving gpu-3 -> gpu-5; gpu-3 drained",
+      "verified": {
+       "step": 48,
+       "cleared": [
+        "down:replica-3",
+        "restarting:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "crash",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-3",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "Log line at step 35: 'ERROR replica-3: segfault in attention kernel; process exited with code 139'"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-3"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Replica-3 on gpu-3 is crashing due to a segfault. Draining the node will move the workload to a healthy spare node (gpu-5 or gpu-6) and isolate the faulty hardware/software state."
+        }
+       ],
+       "summary": "Isolating the crashing replica-3 by draining its node gpu-3 to restore service via migration to a spare node."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 50,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.004828201600000001,
+  "calls": 26,
+  "tokens_in": 47767,
+  "tokens_out": 10806
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "replica_crash",
+   "step": 35,
+   "target": [
+    "replica-3"
+   ],
+   "cause": "replica-3 crashed and did not come back",
+   "fix": "restart:replica-3",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

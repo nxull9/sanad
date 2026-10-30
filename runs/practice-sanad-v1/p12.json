@@ -1,0 +1,1520 @@
+{
+ "score": {
+  "scenario": "p12",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": 10,
+  "causes": [
+   {
+    "fault": "rack_power",
+    "target": [
+     "rack-b"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 2,
+  "blocked": 3,
+  "undone": 3,
+  "approvals": 0,
+  "model_calls": 12,
+  "strong_calls": 11,
+  "cost": 0.002983,
+  "tokens_in": 46344,
+  "tokens_out": 10515,
+  "escalations": [
+   {
+    "step": 42,
+    "team": "infrastructure-hardware",
+    "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply.",
+    "hypothesis": "H1",
+    "automatic": false
+   },
+   {
+    "step": 54,
+    "team": "infrastructure-hardware",
+    "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply.",
+    "hypothesis": "H1",
+    "automatic": false
+   },
+   {
+    "step": 158,
+    "team": "infrastructure",
+    "summary": "Overload on workers: max_concurrency=64 insufficient for 132 req/s with 3 replicas. Scale-out blocked by no spare nodes. Need hardware repair or concurrency increase.",
+    "hypothesis": "H2",
+    "automatic": false
+   },
+   {
+    "step": 160,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, down:replica-4, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, unreachable:gpu-4, unreachable:gpu-5, unreachable:gpu-6. Ledger: H1 power_failure  on ['gpu-4', 'gpu-5', 'gpu-6'] [escalated]; H2 overload max_concurrency on ['workers'] [escalated]; H3 overload timeout_ms on ['gateway'] [suspected]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "down:replica-4",
+     "unreachable:gpu-4",
+     "unreachable:gpu-5",
+     "unreachable:gpu-6"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "power_failure",
+      "component": [
+       "gpu-4",
+       "gpu-5",
+       "gpu-6"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "evidence": [
+       "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+       "All affected GPUs are in rack-b",
+       "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+      ],
+      "confidence": 1.0,
+      "attempts": 1,
+      "history": [
+       "step 42 set_weight -> not_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3"
+      ],
+      "evidence": [
+       "Incoming traffic is 1.08x normal (132 req/s)",
+       "All three healthy replicas show similar high p95 latency (~9000 ms vs fleet normal 3640 ms)",
+       "Workers max_concurrency is 64, which may be insufficient under increased load"
+      ],
+      "confidence": 0.7,
+      "attempts": 2,
+      "history": [
+       "step 130 set_weight -> not_fixed",
+       "step 144 set_weight -> not_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "overload",
+      "component": [
+       "gateway"
+      ],
+      "setting": "timeout_ms",
+      "explains": [
+       "slow:gateway",
+       "backlog:queue"
+      ],
+      "evidence": [
+       "Gateway p95 latency 8603 ms (normal 3690 ms)",
+       "Backlog in queue (720 requests waiting) indicates requests are queued up",
+       "Workers may be slow, causing gateway to wait longer"
+      ],
+      "confidence": 0.6,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "drain",
+      "args": {
+       "node": "gpu-4"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Move replica-4 to a healthy node to restore service capacity, as gpu-4 is powered off.",
+      "ran": false,
+      "risk": "medium",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "no spare GPU node to move to"
+     },
+     {
+      "step": 42,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 0
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Stop sending traffic to the down replica immediately.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "replica-4 traffic weight 1.0 -> 0",
+      "verified": {
+       "step": 50,
+       "cleared": [],
+       "still_open": [
+        "down:replica-4",
+        "unreachable:gpu-4",
+        "unreachable:gpu-5",
+        "unreachable:gpu-6"
+       ]
+      },
+      "undone": "replica-4 traffic weight 0 -> 1.0"
+     },
+     {
+      "step": 42,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure-hardware",
+       "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "This is a hardware/power issue outside the scope of software configuration changes.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "handed to infrastructure-hardware"
+     },
+     {
+      "step": 54,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure-hardware",
+       "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Power failure is a hardware issue outside our control; already escalated, but symptoms persist and no further actions can fix it from our side.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "handed to infrastructure-hardware"
+     },
+     {
+      "step": 128,
+      "action": "scale_out",
+      "args": {
+       "count": 1
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Add a replica on a spare node to absorb load and reduce latency on the three healthy replicas.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 130,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-1",
+       "weight": 0.8
+      },
+      "hypothesis": "H2",
+      "purpose": "experiment",
+      "why": "Reduce load on one replica to see if latency drops, isolating whether the issue is overload or something else.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "replica-1 traffic weight 1.0 -> 0.8",
+      "verified": {
+       "step": 138,
+       "cleared": [],
+       "still_open": [
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3"
+       ]
+      },
+      "undone": "replica-1 traffic weight 0.8 -> 1.0"
+     },
+     {
+      "step": 144,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Add capacity on spare nodes to absorb load and reduce latency on healthy replicas.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 144,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-1",
+       "weight": 0.8
+      },
+      "hypothesis": "H2",
+      "purpose": "experiment",
+      "why": "Slightly reduce load on one replica to test if latency improves, confirming overload.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "replica-1 traffic weight 1.0 -> 0.8",
+      "verified": {
+       "step": 152,
+       "cleared": [],
+       "still_open": [
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3"
+       ]
+      },
+      "undone": "replica-1 traffic weight 0.8 -> 1.0"
+     },
+     {
+      "step": 156,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-1",
+       "weight": 0.5
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Reduce load on replica-1 to see if its latency drops, testing if overload is the cause",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: H2 has had 2 fixes that did not work; escalate it"
+     },
+     {
+      "step": 156,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-2",
+       "weight": 0.5
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Reduce load on replica-2 to see if its latency drops, testing if overload is the cause",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: H2 has had 2 fixes that did not work; escalate it"
+     },
+     {
+      "step": 156,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-3",
+       "weight": 0.5
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Reduce load on replica-3 to see if its latency drops, testing if overload is the cause",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: H2 has had 2 fixes that did not work; escalate it"
+     },
+     {
+      "step": 158,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "Power failure on rack-b: gpu-4, gpu-5, gpu-6 unreachable due to PSU fault. Replica-4 down. Remaining replicas overloaded; scale-out impossible. Gateway and queue backlog secondary. Need hardware repair."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Power failure is not fixable by software; needs hardware team.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "H1 was already handed to people"
+     },
+     {
+      "step": 158,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "Overload on workers: max_concurrency=64 insufficient for 132 req/s with 3 replicas. Scale-out blocked by no spare nodes. Need hardware repair or concurrency increase."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Two fixes already attempted and failed; root cause is hardware loss, not config.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "handed to infrastructure"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-4"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Move replica-4 to a healthy node to restore service capacity, as gpu-4 is powered off."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 0
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Stop sending traffic to the down replica immediately."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure-hardware",
+          "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "This is a hardware/power issue outside the scope of software configuration changes."
+        }
+       ],
+       "summary": "Identified a power failure in rack-b affecting GPUs 4, 5, and 6 based on BMC logs; drained the affected node and escalated to infrastructure hardware team."
+      }
+     },
+     {
+      "step": 54,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "suspected",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure-hardware",
+          "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Power failure is a hardware issue outside our control; already escalated, but symptoms persist and no further actions can fix it from our side."
+        }
+       ],
+       "summary": "Rack-b power failure persists; already escalated to infrastructure-hardware team, no further actions possible."
+      }
+     },
+     {
+      "step": 128,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.14x normal (139 req/s)",
+          "All three healthy replicas show similar high p95 latency (~5700 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue_depth"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if worker queue depth is high, which would confirm overload hypothesis"
+        }
+       ],
+       "summary": "Investigating whether increased traffic is overloading workers, causing high latency on all healthy replicas."
+      }
+     },
+     {
+      "step": 128,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.14x normal (139 req/s)",
+          "All three healthy replicas show similar high p95 latency (~5700 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 1
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Add a replica on a spare node to absorb load and reduce latency on the three healthy replicas."
+        }
+       ],
+       "summary": "Rack-b power failure is escalated; scaling out one replica to mitigate overload on healthy replicas."
+      }
+     },
+     {
+      "step": 130,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.08x normal (132 req/s)",
+          "All three healthy replicas show similar high p95 latency (~5700 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-1",
+          "weight": 0.8
+         },
+         "hypothesis": "H2",
+         "purpose": "experiment",
+         "why": "Reduce load on one replica to see if latency drops, isolating whether the issue is overload or something else."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check worker queue depth to confirm if workers are the bottleneck."
+        }
+       ],
+       "summary": "Power failure on rack-b is escalated; investigating whether the remaining replicas' latency is due to overload or another cause."
+      }
+     },
+     {
+      "step": 142,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.13x normal (139 req/s)",
+          "All three healthy replicas show similar high p95 latency (~7000 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue_depth"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers queue is backing up, confirming overload hypothesis before increasing concurrency"
+        }
+       ],
+       "summary": "Investigating worker queue depth to confirm overload before adjusting max_concurrency, while power failure in rack-b is already escalated."
+      }
+     },
+     {
+      "step": 142,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.13x normal (139 req/s)",
+          "All three healthy replicas show similar high p95 latency (~7000 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue_depth"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers queue is building up, confirming overload before increasing max_concurrency"
+        }
+       ],
+       "summary": "Investigating worker queue depth to confirm overload hypothesis before adjusting max_concurrency."
+      }
+     },
+     {
+      "step": 142,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.13x normal (139 req/s)",
+          "All three healthy replicas show similar high p95 latency (~7000 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue_depth"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers queue is building up, confirming overload hypothesis before increasing max_concurrency"
+        }
+       ],
+       "summary": "Investigating worker queue depth to confirm overload before adjusting max_concurrency, while power failure in rack-b is already escalated."
+      }
+     },
+     {
+      "step": 144,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.17x normal (143 req/s)",
+          "All three healthy replicas show similar high p95 latency (~7900 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway p95 latency 8070 ms (normal 3690 ms)",
+          "Backlog in queue (582 requests waiting) indicates requests are queued up",
+          "Workers may be slow, causing gateway to wait longer"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue_depth"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated (queue depth) to confirm overload before increasing concurrency"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "gateway",
+          "contains": "timeout_rate"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if gateway timeouts are contributing to latency and backlog"
+        }
+       ],
+       "summary": "Investigating worker overload and gateway latency; power failure on rack-b already escalated."
+      }
+     },
+     {
+      "step": 144,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.17x normal (143 req/s)",
+          "All three healthy replicas show similar high p95 latency (~7900 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Gateway p95 latency 8070 ms (normal 3690 ms)",
+          "Backlog in queue (582 requests waiting) indicates requests are queued up",
+          "Workers may be slow, causing gateway to wait longer"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Add capacity on spare nodes to absorb load and reduce latency on healthy replicas."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-1",
+          "weight": 0.8
+         },
+         "hypothesis": "H2",
+         "purpose": "experiment",
+         "why": "Slightly reduce load on one replica to test if latency improves, confirming overload."
+        }
+       ],
+       "summary": "Power failure on rack-b is escalated; adding capacity and testing load distribution to address overload on healthy replicas."
+      }
+     },
+     {
+      "step": 156,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal (133 req/s)",
+          "All three healthy replicas show similar high p95 latency (~9000 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Gateway p95 latency 8889 ms (normal 3690 ms)",
+          "Backlog in queue (744 requests waiting) indicates requests are queued up",
+          "Workers may be slow, causing gateway to wait longer"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-1",
+          "weight": 0.5
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Reduce load on replica-1 to see if its latency drops, testing if overload is the cause"
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-2",
+          "weight": 0.5
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Reduce load on replica-2 to see if its latency drops, testing if overload is the cause"
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-3",
+          "weight": 0.5
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Reduce load on replica-3 to see if its latency drops, testing if overload is the cause"
+        }
+       ],
+       "summary": "Reducing traffic to all three healthy replicas to test if overload from lost capacity is causing high latency."
+      }
+     },
+     {
+      "step": 158,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b",
+          "Telemetry (temp/clock) reads 0, indicating hardware power loss"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.08x normal (132 req/s)",
+          "All three healthy replicas show similar high p95 latency (~9000 ms vs fleet normal 3640 ms)",
+          "Workers max_concurrency is 64, which may be insufficient under increased load"
+         ],
+         "status": "escalated",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Gateway p95 latency 8603 ms (normal 3690 ms)",
+          "Backlog in queue (720 requests waiting) indicates requests are queued up",
+          "Workers may be slow, causing gateway to wait longer"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "Power failure on rack-b: gpu-4, gpu-5, gpu-6 unreachable due to PSU fault. Replica-4 down. Remaining replicas overloaded; scale-out impossible. Gateway and queue backlog secondary. Need hardware repair."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Power failure is not fixable by software; needs hardware team."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "Overload on workers: max_concurrency=64 insufficient for 132 req/s with 3 replicas. Scale-out blocked by no spare nodes. Need hardware repair or concurrency increase."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Two fixes already attempted and failed; root cause is hardware loss, not config."
+        }
+       ],
+       "summary": "Escalating power failure on rack-b and resulting overload; no software fix possible."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 42,
+      "team": "infrastructure-hardware",
+      "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply.",
+      "hypothesis": "H1",
+      "automatic": false
+     },
+     {
+      "step": 54,
+      "team": "infrastructure-hardware",
+      "summary": "Rack-b power failure affecting GPUs 4, 5, and 6. BMC reports PSU faults. All telemetry lost. Replica-4 is down. Hardware team needed to replace PSU or repair rack-b power supply.",
+      "hypothesis": "H1",
+      "automatic": false
+     },
+     {
+      "step": 158,
+      "team": "infrastructure",
+      "summary": "Overload on workers: max_concurrency=64 insufficient for 132 req/s with 3 replicas. Scale-out blocked by no spare nodes. Need hardware repair or concurrency increase.",
+      "hypothesis": "H2",
+      "automatic": false
+     },
+     {
+      "step": 160,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, down:replica-4, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, unreachable:gpu-4, unreachable:gpu-5, unreachable:gpu-6. Ledger: H1 power_failure  on ['gpu-4', 'gpu-5', 'gpu-6'] [escalated]; H2 overload max_concurrency on ['workers'] [escalated]; H3 overload timeout_ms on ['gateway'] [suspected]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 9 symptoms open"
+   }
+  ],
+  "cost": 0.004735603600000001,
+  "calls": 25,
+  "tokens_in": 46344,
+  "tokens_out": 10515
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "rack_power",
+   "step": 37,
+   "target": [
+    "rack-b"
+   ],
+   "cause": "power supply fault on rack-b",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "data-centre facilities team",
+   "silent": false
+  }
+ ],
+ "changes": []
+}

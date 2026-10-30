@@ -1,0 +1,177 @@
+{
+ "score": {
+  "scenario": "p13",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 50,
+  "causes": [
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 8.3e-05,
+  "tokens_in": 44802,
+  "tokens_out": 9227,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "down:replica-3",
+     "restarting:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "crash",
+      "component": [
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "evidence": [
+       "Log line at step 35: 'ERROR replica-3: segfault in attention kernel; process exited with code 139'",
+       "Node gpu-3 shows no hardware errors (implied by lack of ECC/temp alerts in platform state)"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 38 restart -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The replica crashed due to a segfault. Since the node hardware appears healthy, restarting the process is the standard recovery action.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "crash",
+       "setting": null,
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "replica-3 restarting",
+      "verified": {
+       "step": 48,
+       "cleared": [
+        "down:replica-3",
+        "restarting:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "crash",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-3",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "Log line at step 35: 'ERROR replica-3: segfault in attention kernel; process exited with code 139'",
+          "Node gpu-3 shows no hardware errors (implied by lack of ECC/temp alerts in platform state)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "replica-3"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The replica crashed due to a segfault. Since the node hardware appears healthy, restarting the process is the standard recovery action."
+        }
+       ],
+       "summary": "Replica-3 crashed with a segfault; initiating restart to restore service."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 50,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0036016082999999997,
+  "calls": 24,
+  "tokens_in": 44802,
+  "tokens_out": 9227
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "replica_crash",
+   "step": 35,
+   "target": [
+    "replica-3"
+   ],
+   "cause": "replica-3 crashed and did not come back",
+   "fix": "restart:replica-3",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

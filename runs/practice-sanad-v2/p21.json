@@ -1,0 +1,458 @@
+{
+ "score": {
+  "scenario": "p21",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 400,
+  "causes": [
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-1"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 3,
+  "strong_calls": 1,
+  "cost": 0.000292,
+  "tokens_in": 76631,
+  "tokens_out": 15393,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "evidence": [
+       "workers max_concurrency changed 64->4 at step 38",
+       "backlog started at step 38",
+       "all replicas slow, workers dispatching only 16 req/s",
+       "incoming traffic normal 1.02x"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "workers max_concurrency changed 64->4 at step 38",
+       "rollback to 64 performed at step 42",
+       "backlog still present (683 requests) and slow latency persists on all replicas at step 50",
+       "incoming traffic is normal (1.01x)"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "max_concurrency",
+       "replicas": []
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Concurrency cut to 4 throttles workers, causing backlog and timeouts; restore to 64.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "workers max_concurrency 4 -> 64",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "errors:gateway",
+        "stalled:workers"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "backlog started at step 38",
+          "all replicas slow, workers dispatching only 16 req/s",
+          "incoming traffic normal 1.02x"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "max_concurrency",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Concurrency cut to 4 throttles workers, causing backlog and timeouts; restore to 64."
+        }
+       ],
+       "summary": "Workers max_concurrency was reduced to 4, throttling throughput and causing the backlog and latency spike; rolling back to 64."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64->4 at step 38",
+          "rollback to 64 performed at step 42",
+          "backlog still present (683 requests) and slow latency persists on all replicas at step 50",
+          "incoming traffic is normal (1.01x)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9,
+         "note": "The config change was the root cause of the bottleneck. The rollback fixed the *rate* limit but the system is still recovering from the backlog accumulation. This is a transient state following a fix, not a new failure."
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "The workers have been restored to full concurrency (64). The remaining symptoms (backlog, high latency) are due to the queue clearing out the accumulated 683 requests. Waiting allows the system to drain the backlog naturally without unnecessary intervention."
+        }
+       ],
+       "summary": "The workers' max_concurrency has been rolled back to 64; the remaining latency and backlog are transient effects of draining the queue accumulated during the low-concurrency period, so waiting for recovery is the correct action."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 56,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 76,
+    "first_symptoms": [
+     "down:replica-1",
+     "restarting:replica-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "crash",
+      "component": [
+       "replica-1"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-1",
+       "restarting:replica-1"
+      ],
+      "evidence": [
+       "ERROR replica-1: segfault in attention kernel; process exited with code 139"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 76 restart -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 76,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Replica crashed with segfault (exit code 139). Node gpu-1 shows no hardware errors, so a restart is the appropriate fix to restore service.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "crash",
+       "setting": null,
+       "component": [
+        "replica-1"
+       ]
+      },
+      "result": "replica-1 restarting",
+      "verified": {
+       "step": 86,
+       "cleared": [
+        "down:replica-1",
+        "restarting:replica-1"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 76,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-1",
+       "restarting:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "crash",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-1",
+          "restarting:replica-1"
+         ],
+         "evidence": [
+          "ERROR replica-1: segfault in attention kernel; process exited with code 139"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "replica-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Replica crashed with segfault (exit code 139). Node gpu-1 shows no hardware errors, so a restart is the appropriate fix to restore service."
+        }
+       ],
+       "summary": "Identified H1 as a crash on replica-1 due to a segfault in the attention kernel; restarting replica-1 to restore service."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 88,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.005484342500000001,
+  "calls": 41,
+  "tokens_in": 76631,
+  "tokens_out": 15393
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_worker_concurrency",
+   "step": 38,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "replica_crash",
+   "step": 72,
+   "target": [
+    "replica-1"
+   ],
+   "cause": "replica-1 crashed and did not come back",
+   "fix": "restart:replica-1",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 4,
+   "new": 64,
+   "scope": [
+    "workers"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

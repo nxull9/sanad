@@ -1,0 +1,184 @@
+{
+ "score": {
+  "scenario": "p09",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 40,
+  "causes": [
+   {
+    "fault": "gpu_thermal",
+    "target": [
+     "gpu-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 9.8e-05,
+  "tokens_in": 18703,
+  "tokens_out": 3811,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "hot:gpu-3",
+     "slow:gateway",
+     "slow:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-3"
+      ],
+      "setting": null,
+      "explains": [
+       "hot:gpu-3",
+       "slow:replica-3",
+       "slow:gateway"
+      ],
+      "evidence": [
+       "WARN gpu-3: GPU temperature 91C, clocks throttled (HW slowdown: thermal)",
+       "gpu-3 at 92 C, clock 890 MHz",
+       "replica-3 p95 latency 8865 ms"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 38 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "drain",
+      "args": {
+       "node": "gpu-3"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The node is overheating and throttling performance; draining moves the replica to a healthy spare node to restore performance and cool down the hardware.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-3"
+       ]
+      },
+      "result": "replica-3 moving gpu-3 -> gpu-5; gpu-3 drained",
+      "verified": {
+       "step": 48,
+       "cleared": [
+        "hot:gpu-3",
+        "slow:gateway",
+        "slow:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "hot:gpu-3",
+       "slow:gateway",
+       "slow:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-3",
+          "slow:replica-3",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "WARN gpu-3: GPU temperature 91C, clocks throttled (HW slowdown: thermal)",
+          "gpu-3 at 92 C, clock 890 MHz",
+          "replica-3 p95 latency 8865 ms"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-3"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The node is overheating and throttling performance; draining moves the replica to a healthy spare node to restore performance and cool down the hardware."
+        }
+       ],
+       "summary": "Identified GPU-3 overheating causing throttling and high latency for replica-3 and the gateway; draining the node to migrate the workload."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 50,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0012435500000000002,
+  "calls": 10,
+  "tokens_in": 18703,
+  "tokens_out": 3811
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "gpu_thermal",
+   "step": 34,
+   "target": [
+    "gpu-3"
+   ],
+   "cause": "gpu-3 fan failure: thermal throttling",
+   "fix": "drain:gpu-3",
+   "fixable": true,
+   "needs_human": "replace the fan on the node",
+   "silent": false
+  }
+ ],
+ "changes": []
+}

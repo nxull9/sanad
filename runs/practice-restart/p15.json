@@ -1,0 +1,114 @@
+{
+ "score": {
+  "scenario": "p15",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 30,
+  "causes": [
+   {
+    "fault": "worker_deadlock",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": null,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 5,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "opened": 40,
+    "actions": [
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     }
+    ],
+    "escalations": [],
+    "rounds": 1,
+    "approvals": 0
+   }
+  ],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "worker_deadlock",
+   "step": 37,
+   "target": [
+    "workers"
+   ],
+   "cause": "worker dispatcher deadlocked on dispatch_mutex",
+   "fix": "restart:workers",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

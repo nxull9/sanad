@@ -1,0 +1,235 @@
+{
+ "score": {
+  "scenario": "p07",
+  "faults": 1,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 15,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": [
+   {
+    "step": 76,
+    "team": "on-call engineer",
+    "summary": "still broken",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "opened": 40,
+    "actions": [
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     }
+    ],
+    "escalations": [
+     {
+      "step": 76,
+      "team": "on-call engineer",
+      "summary": "still broken",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "rounds": 3,
+    "approvals": 0
+   }
+  ],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_worker_concurrency",
+   "step": 36,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 36,
+   "time": "2026-10-30T09:06:00",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  }
+ ]
+}

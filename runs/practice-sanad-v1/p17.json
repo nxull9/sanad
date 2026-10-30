@@ -1,0 +1,434 @@
+{
+ "score": {
+  "scenario": "p17",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 140,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.000263,
+  "tokens_in": 107524,
+  "tokens_out": 30391,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "down:replica-4",
+     "long_answers:replica-1",
+     "long_answers:replica-2",
+     "long_answers:replica-3",
+     "restarting:replica-4",
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "long_answers:replica-1",
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "down:replica-4"
+      ],
+      "evidence": [
+       "tokenizer changed to tok-2.2-beta at step 38 on all replicas",
+       "Arabic answers are garbled (mojibake) on replicas 1-3",
+       "replica-4 segfaulted after the change",
+       "English answers are fine, consistent with tokenizer vocab issue"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "crash",
+      "component": [
+       "gpu-4"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-4"
+      ],
+      "evidence": [
+       "replica-4 is DOWN",
+       "segfault in attention kernel log seen at step 39",
+       "rollback of tokenizer did not bring replica-4 back up"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 50 restart -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Tokenizer upgrade is the only recent change affecting all replicas; rollback to previous tokenizer to fix Arabic garbling and prevent further crashes.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "tokenizer",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "long_answers:replica-1",
+        "long_answers:replica-2",
+        "long_answers:replica-3",
+        "restarting:replica-4",
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": [
+        "down:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Replica-4 crashed due to a segfault; restarting may recover it if the crash was transient or caused by the bad state which has now been rolled back.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "crash",
+       "setting": null,
+       "component": [
+        "gpu-4"
+       ]
+      },
+      "result": "replica-4 restarting",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "down:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4",
+       "long_answers:replica-1",
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "restarting:replica-4",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-1",
+          "long_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "down:replica-4",
+          "restarting:replica-4"
+         ],
+         "evidence": [
+          "tokenizer changed to tok-2.2-beta at step 38 on all replicas",
+          "Arabic answers are garbled (mojibake) on replicas 1-3",
+          "replica-4 segfaulted after the change",
+          "English answers are fine, consistent with tokenizer vocab issue"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Tokenizer upgrade is the only recent change affecting all replicas; rollback to previous tokenizer to fix Arabic garbling and prevent further crashes."
+        }
+       ],
+       "summary": "Rolling back the tokenizer to tok-2.1 on all replicas to address Arabic garbling, long answers, and replica-4 crash caused by the tok-2.2-beta upgrade."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-1",
+          "long_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "tokenizer changed to tok-2.2-beta at step 38 on all replicas",
+          "Arabic answers are garbled (mojibake) on replicas 1-3",
+          "replica-4 segfaulted after the change",
+          "English answers are fine, consistent with tokenizer vocab issue"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "crash",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is DOWN",
+          "segfault in attention kernel log seen at step 39",
+          "rollback of tokenizer did not bring replica-4 back up"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "replica-4"
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Replica-4 crashed due to a segfault; restarting may recover it if the crash was transient or caused by the bad state which has now been rolled back."
+        }
+       ],
+       "summary": "Restarting replica-4 to recover from the segfault crash that persisted after the tokenizer rollback."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 62,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0133391502,
+  "calls": 54,
+  "tokens_in": 107524,
+  "tokens_out": 30391
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 36,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_tokenizer",
+   "step": 38,
+   "target": [],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "replica_crash",
+   "step": 39,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "replica-4 crashed and did not come back",
+   "fix": "restart:replica-4",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 36,
+   "time": "2026-10-30T09:06:00",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

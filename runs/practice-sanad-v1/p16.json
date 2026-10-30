@@ -1,0 +1,2839 @@
+{
+ "score": {
+  "scenario": "p16",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 140,
+  "causes": [
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   },
+   {
+    "fault": "memory_leak",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 8,
+  "unneeded_changes": 4,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 15,
+  "strong_calls": 11,
+  "cost": 0.005549,
+  "tokens_in": 103492,
+  "tokens_out": 29602,
+  "escalations": [
+   {
+    "step": 166,
+    "team": "identity team",
+    "summary": "identity-service slowdown suspected: only rack-a replicas (gpu-1/gpu-2) show ~60s p95 while identical rack-b replicas are healthy; rollbacks of server_build did not help. Gateway hits 30s upstream timeouts causing 100% gateway errors and queue backlog.",
+    "hypothesis": "H7",
+    "automatic": false
+   },
+   {
+    "step": 176,
+    "team": "identity-team",
+    "summary": "All replicas slow (p95 ~12s) and gateway timeouts; rack-a and rack-b both affected, rollbacks and weight changes failed; suspect external identity-service bottleneck.",
+    "hypothesis": "H7",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "down:replica-3",
+     "restarting:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "evidence": [
+       "ERROR replica-3: segfault in attention kernel; process exited with code 139",
+       "Only replica-3 is down/crashing while others are healthy",
+       "Segfault (code 139) indicates hardware or low-level driver issue, not application logic"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 40 drain -> fixed",
+       "step 40 set_weight -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-4"
+      ],
+      "evidence": [
+       "All remaining replicas (1, 2, 4) show identical memory leak symptoms (rising ~1.5-1.7 pts/step)",
+       "Change log shows server_build updated to serve-1.8.0 on all replicas at step 43",
+       "Memory usage is above normal baseline and increasing linearly, characteristic of a leak introduced by new code",
+       "Replica-3 was drained before the change took full effect or crashed due to unrelated HW issue, but 1,2,4 were affected by the deploy"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 50 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "replica-3"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-3"
+      ],
+      "evidence": [
+       "Replica-3 is the only replica still running serve-1.8.0 (the bad build)",
+       "Replica-3 memory is rising (82% and rising), consistent with the memory leak observed in other replicas when they had this build",
+       "Rollback in step 50 did not include replica-3, so it remains on the faulty version",
+       "Other replicas were rolled back to serve-1.7.2 and their memory stabilized"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 58 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-3"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Move the crashing replica to a spare node to restore capacity and isolate the potentially faulty GPU hardware.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "replica-3 moving gpu-3 -> gpu-5; gpu-3 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "down:replica-3",
+        "restarting:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 40,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-3",
+       "weight": 0
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Stop sending traffic to the down replica immediately to prevent errors for users.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "replica-3 traffic weight 1.0 -> 0",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "down:replica-3",
+        "restarting:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 50,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "The memory leak on replicas 1, 2, and 4 correlates perfectly with the serve-1.8.0 deployment. Rolling back to the previous version should stop the leak.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-1', 'replica-2', 'replica-4']",
+      "verified": {
+       "step": 58,
+       "cleared": [
+        "memory:replica-1",
+        "memory:replica-2",
+        "memory:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 58,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Replica-3 is still on the bad build (serve-1.8.0) which causes memory leaks. Rolling it back to serve-1.7.2 should stop the memory rise.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "server_build",
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-3']",
+      "verified": {
+       "step": 66,
+       "cleared": [
+        "memory:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-3",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "ERROR replica-3: segfault in attention kernel; process exited with code 139",
+          "Only replica-3 is down/crashing while others are healthy",
+          "Segfault (code 139) indicates hardware or low-level driver issue, not application logic"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-3"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Move the crashing replica to a spare node to restore capacity and isolate the potentially faulty GPU hardware."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-3",
+          "weight": 0
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Stop sending traffic to the down replica immediately to prevent errors for users."
+        }
+       ],
+       "summary": "Replica-3 is crashing due to a GPU segfault; draining gpu-3 and zeroing its weight to mitigate impact."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-3",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "ERROR replica-3: segfault in attention kernel; process exited with code 139",
+          "Only replica-3 is down/crashing while others are healthy",
+          "Segfault (code 139) indicates hardware or low-level driver issue, not application logic"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-1",
+          "memory:replica-2",
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "All remaining replicas (1, 2, 4) show identical memory leak symptoms (rising ~1.5-1.7 pts/step)",
+          "Change log shows server_build updated to serve-1.8.0 on all replicas at step 43",
+          "Memory usage is above normal baseline and increasing linearly, characteristic of a leak introduced by new code",
+          "Replica-3 was drained before the change took full effect or crashed due to unrelated HW issue, but 1,2,4 were affected by the deploy"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "The memory leak on replicas 1, 2, and 4 correlates perfectly with the serve-1.8.0 deployment. Rolling back to the previous version should stop the leak."
+        }
+       ],
+       "summary": "Rolled back server_build on replicas 1, 2, and 4 to fix the memory leak caused by the serve-1.8.0 release."
+      }
+     },
+     {
+      "step": 58,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "memory:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-3",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "ERROR replica-3: segfault in attention kernel; process exited with code 139",
+          "Only replica-3 is down/crashing while others are healthy",
+          "Segfault (code 139) indicates hardware or low-level driver issue, not application logic"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-1",
+          "memory:replica-2",
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "All remaining replicas (1, 2, 4) show identical memory leak symptoms (rising ~1.5-1.7 pts/step)",
+          "Change log shows server_build updated to serve-1.8.0 on all replicas at step 43",
+          "Memory usage is above normal baseline and increasing linearly, characteristic of a leak introduced by new code",
+          "Replica-3 was drained before the change took full effect or crashed due to unrelated HW issue, but 1,2,4 were affected by the deploy"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-3"
+         ],
+         "evidence": [
+          "Replica-3 is the only replica still running serve-1.8.0 (the bad build)",
+          "Replica-3 memory is rising (82% and rising), consistent with the memory leak observed in other replicas when they had this build",
+          "Rollback in step 50 did not include replica-3, so it remains on the faulty version",
+          "Other replicas were rolled back to serve-1.7.2 and their memory stabilized"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Replica-3 is still on the bad build (serve-1.8.0) which causes memory leaks. Rolling it back to serve-1.7.2 should stop the memory rise."
+        }
+       ],
+       "summary": "Replica-3 is still running the bad server_build (serve-1.8.0) that causes memory leaks; rolling it back to the previous version will fix the remaining symptom."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 4,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 68,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 144,
+    "first_symptoms": [
+     "slow:gateway",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "replica-4 rolled back to serve-1.7.2 at step 50",
+       "weight set to 0 at step 144 cleared slow:replica-4"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 144 set_weight -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:gateway",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "Incoming traffic is 1.09x normal",
+       "Workers dispatching 89 req/s vs normal 180"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "gpu-4"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "replica-4 cleared when weight set to 0",
+       "Other replicas on different nodes are healthy"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "slow:replica-1",
+       "slow:replica-2"
+      ],
+      "evidence": [
+       "replica-1 and replica-2 slow while replica-3 and replica-4 weighted 0",
+       "Both rollbacks to serve-1.7.2 and serve-1.7.1 did not clear symptoms",
+       "Replica-1/2 on rack-a gpu-1/gpu-2, healthy replicas on rack-b"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 154 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H5": {
+      "id": "H5",
+      "type": "bad_config",
+      "component": [
+       "gateway"
+      ],
+      "setting": "timeout_ms",
+      "explains": [
+       "slow:gateway"
+      ],
+      "evidence": [
+       "Gateway timeout is 30000 ms; errors show 'upstream timeout after 30000ms'",
+       "Gateway p95 56294 ms exceeds timeout"
+      ],
+      "confidence": 0.6,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     },
+     "H6": {
+      "id": "H6",
+      "type": "overload",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "backlog:queue"
+      ],
+      "evidence": [
+       "Workers dispatching 89 req/s vs normal 180",
+       "Backlog 2322 requests, queue full",
+       "max_concurrency 64"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     },
+     "H7": {
+      "id": "H7",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:gateway",
+       "backlog:queue"
+      ],
+      "evidence": [
+       "Only rack-a replicas (replica-1/gpu-1, replica-2/gpu-2) are slow; rack-b replicas healthy but idle",
+       "Rollbacks on replica-1/2 did not clear symptoms",
+       "Replica metrics stable, no restarts, normal output tokens",
+       "Path passes through external identity-service owned by another team"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 166 set_weight -> partly_fixed",
+       "step 166 set_weight -> partly_fixed"
+      ],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 144,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 0
+      },
+      "hypothesis": "H1",
+      "purpose": "mitigate",
+      "why": "To stop sending traffic to the potentially faulty replica-4 and reduce its impact on overall gateway latency while investigating.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "replica-4 traffic weight 1.0 -> 0",
+      "verified": {
+       "step": 152,
+       "cleared": [
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 154,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-1",
+        "replica-2"
+       ]
+      },
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Re-rollback replica-1 and replica-2 to ensure they are on serve-1.7.2, as the previous rollback may have failed.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-1",
+        "replica-2"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-1', 'replica-2']",
+      "verified": {
+       "step": 162,
+       "cleared": [],
+       "still_open": [
+        "slow:replica-1",
+        "slow:replica-2"
+       ]
+      },
+      "undone": "set server_build on ['replica-1', 'replica-2']"
+     },
+     {
+      "step": 166,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-3",
+       "weight": 1
+      },
+      "hypothesis": "H7",
+      "purpose": "fix",
+      "why": "Route traffic to healthy rack-b replica-3 to restore serving while rack-a replicas are slow",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "replica-3 traffic weight 0 -> 1",
+      "verified": {
+       "step": 174,
+       "cleared": [
+        "drops:queue",
+        "errors:gateway"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2"
+       ]
+      }
+     },
+     {
+      "step": 166,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 1
+      },
+      "hypothesis": "H7",
+      "purpose": "fix",
+      "why": "Also restore replica-4 weight since it is healthy on rack-b and helps drain backlog",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "replica-4 traffic weight 0 -> 1",
+      "verified": {
+       "step": 174,
+       "cleared": [
+        "drops:queue",
+        "errors:gateway"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2"
+       ]
+      }
+     },
+     {
+      "step": 166,
+      "action": "escalate",
+      "args": {
+       "team": "identity team",
+       "summary": "identity-service slowdown suspected: only rack-a replicas (gpu-1/gpu-2) show ~60s p95 while identical rack-b replicas are healthy; rollbacks of server_build did not help. Gateway hits 30s upstream timeouts causing 100% gateway errors and queue backlog."
+      },
+      "hypothesis": "H7",
+      "purpose": "escalate",
+      "why": "identity-service is another team's service; need their investigation",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity team"
+     },
+     {
+      "step": 176,
+      "action": "escalate",
+      "args": {
+       "team": "identity-team",
+       "summary": "All replicas slow (p95 ~12s) and gateway timeouts; rack-a and rack-b both affected, rollbacks and weight changes failed; suspect external identity-service bottleneck."
+      },
+      "hypothesis": "H7",
+      "purpose": "escalate",
+      "why": "Evidence points to external dependency; not ours to fix.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity-team"
+     }
+    ],
+    "turns": [
+     {
+      "step": 144,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "slow:gateway",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with elevated p95 latency (5563 ms vs fleet 3644 ms)",
+          "All replicas share the same model_version, template, quantization, tokenizer, and memory_limit.",
+          "The previous server_build was rolled back to serve-1.7.2 on all replicas at steps 50 and 58.",
+          "If the rollback was incomplete or if a different setting on replica-4 is causing the issue, it must be investigated.",
+          "However, looking closely at the change log: step 43 deployed serve-1.8.0 to ALL. Step 50 rolled back serve-1.8.0 -> 1.7.2 on 1,2,4. Step 58 rolled back serve-1.8.0 -> 1.7.2 on 3. This implies replica-4 WAS on 1.8.0 and got rolled back. If it's still slow, maybe the rollback didn't take effect, or there's another cause.",
+          "Wait, let's re-read carefully. Step 50: 'model-server server_build serve-1.8.0 -> serve-1.7.2 on replica-1, replica-2, replica-4'. Step 58: '...on replica-3'. So ALL replicas are now on serve-1.7.2. The symptoms persist. This suggests the issue is NOT the server_build version itself (since they are all uniform now), OR the rollback failed on replica-4 specifically, OR the issue is something else entirely that coincides with this time.",
+          "Let's look at the gateway symptom: slow:gateway. Gateway p95 is also high. This could be due to replica-4 being slow and receiving traffic? No, gateway aggregates. If one replica is slow, it might increase tail latency for requests routed to it.",
+          "Is there a difference in settings for replica-4? All listed settings appear identical to others.",
+          "Let's check if replica-4 actually has serve-1.7.2. The ledger says 'up'.",
+          "Another possibility: The 'slow' symptom is caused by increased load? Incoming traffic is 1.08x normal. Not enough to explain 5500ms p95 from 3600ms.",
+          "Let's consider H2: Overload? Unlikely given slight traffic increase.",
+          "Let's consider H3: GPU node issue? Replica-4 is on gpu-4. Others on gpu-1, gpu-2. gpu-4 is in rack-b. gpu-1,2 in rack-a. If gpu-4 has hardware issues, that would explain why only replica-4 is slow.",
+          "Evidence: Only replica-4 is slow. It is on a unique node (gpu-4) compared to the healthy replicas (gpu-1, gpu-2).",
+          "Action: Inspect metrics/logs for replica-4 or drain it to see if symptoms clear."
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.08x normal",
+          "Gateway p95 is elevated",
+          "Replica-4 p95 is elevated"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.2,
+         "reasoning": "Traffic increase is minimal (8%). Should not cause such significant latency spike unless there is a specific bottleneck on one path. Since only replica-4 is slow, overload of the whole system is unlikely."
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Only replica-4 on gpu-4 shows high latency",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-4",
+          "contains": "latency"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "To confirm if replica-4's latency is consistently high and check for any error rates or resource saturation (GPU/CPU/Memory) that might indicate a node-level issue or stuck process."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 0
+         },
+         "hypothesis": "H1",
+         "purpose": "mitigate",
+         "why": "To stop sending traffic to the potentially faulty replica-4 and reduce its impact on overall gateway latency while investigating."
+        }
+       ],
+       "summary": "Suspecting a node-specific issue on gpu-4 hosting replica-4, as it is the only replica exhibiting high latency despite uniform configuration across all replicas. Mitigating by draining traffic from replica-4 and inspecting its metrics."
+      }
+     },
+     {
+      "step": 152,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "replica-4 is the only replica with elevated p95 latency (5563 ms vs fleet 3644 ms)",
+          "All replicas share the same model_version, template, quantization, tokenizer, and memory_limit.",
+          "The previous server_build was rolled back to serve-1.7.2 on all replicas at steps 50 and 58.",
+          "If the rollback was incomplete or if a different setting on replica-4 is causing the issue, it must be investigated.",
+          "However, looking closely at the change log: step 43 deployed serve-1.8.0 to ALL. Step 50 rolled back serve-1.8.0 -> 1.7.2 on 1,2,4. Step 58 rolled back serve-1.8.0 -> 1.7.2 on 3. This implies replica-4 WAS on 1.8.0 and got rolled back. If it's still slow, maybe the rollback didn't take effect, or there's another cause.",
+          "Wait, let's re-read carefully. Step 50: 'model-server server_build serve-1.8.0 -> serve-1.7.2 on replica-1, replica-2, replica-4'. Step 58: '...on replica-3'. So ALL replicas are now on serve-1.7.2. The symptoms persist. This suggests the issue is NOT the server_build version itself (since they are all uniform now), OR the rollback failed on replica-4 specifically, OR the issue is something else entirely that coincides with this time."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Incoming traffic is 1.08x normal",
+          "Gateway p95 is elevated",
+          "Replica-4 p95 is elevated"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Only replica-4 on gpu-4 shows high latency",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 have high p95 latency (41989 ms and 40188 ms) while replica-3 and replica-4 have low latency (replica-3 is weighted 0, replica-4 is weighted 0)",
+          "replica-1 and replica-2 are on rack-a (gpu-1 and gpu-2), while replica-3 and replica-4 are on rack-b (gpu-5 and gpu-4)",
+          "The rollback of server_build from serve-1.8.0 to serve-1.7.2 was done on replica-1, replica-2, replica-4 at step 50, and on replica-3 at step 58. If the rollback failed on replica-1 and replica-2, they might still be running serve-1.8.0",
+          "The gateway errors and timeouts suggest that replicas are timing out, which could be due to a bad server_build"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms, and errors show 'upstream timeout after 30000ms'",
+          "If replicas are slow due to a bad server_build, the gateway timeout might be too low, causing errors",
+          "However, the gateway p95 latency is 41901 ms, which is above the timeout, so timeouts are expected if replicas are slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "stalled:workers",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers are dispatching 89 req/s, which is half of normal (180 req/s)",
+          "Queue backlog is 3432 requests, indicating workers are not processing fast enough",
+          "Workers max_concurrency is 64, which might be too low if replicas are slow and requests are timing out, causing retries and congestion"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-1",
+          "contains": "serve-1.8.0"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-1 is still running serve-1.8.0 despite the rollback attempt"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-2",
+          "contains": "serve-1.8.0"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-2 is still running serve-1.8.0 despite the rollback attempt"
+        }
+       ],
+       "summary": "Investigate if replica-1 and replica-2 are still running serve-1.8.0 due to a failed rollback, as they are the only replicas with high latency and are on rack-a."
+      }
+     },
+     {
+      "step": 152,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "replica-4 was rolled back to serve-1.7.2 at step 50",
+          "replica-4 weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Incoming traffic is 1.12x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.8
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 on gpu-4 was slow but cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.7
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 have high p95 latency (41989 ms and 40188 ms) while replica-3 and replica-4 are weighted 0",
+          "replica-1 and replica-2 are on rack-a (gpu-1 and gpu-2), while replica-3 and replica-4 are on rack-b (gpu-5 and gpu-4)",
+          "The rollback of server_build from serve-1.8.0 to serve-1.7.2 was done on replica-1, replica-2, replica-4 at step 50, and on replica-3 at step 58. If the rollback failed on replica-1 and replica-2, they might still be running serve-1.8.0",
+          "The gateway errors and timeouts suggest that replicas are timing out, which could be due to a bad server_build"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms, and errors show 'upstream timeout after 30000ms'",
+          "If replicas are slow due to a bad server_build, the gateway timeout might be too low, causing errors",
+          "However, the gateway p95 latency is 41901 ms, which is above the timeout, so timeouts are expected if replicas are slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "stalled:workers",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers are dispatching 89 req/s, which is half of normal (180 req/s)",
+          "Queue backlog is 3432 requests, indicating workers are not processing fast enough",
+          "Workers max_concurrency is 64, which might be too low if replicas are slow and requests are timing out, causing retries and congestion"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-1",
+          "contains": "serve-1.8.0"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-1 is actually running serve-1.8.0 despite the rollback"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-2",
+          "contains": "serve-1.8.0"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-2 is actually running serve-1.8.0 despite the rollback"
+        }
+       ],
+       "summary": "Investigating whether replica-1 and replica-2 are still running the bad server_build serve-1.8.0 despite the rollback, as they are the only replicas with high latency and are on rack-a."
+      }
+     },
+     {
+      "step": 152,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "replica-4 was rolled back to serve-1.7.2 at step 50",
+          "replica-4 weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Incoming traffic is 1.12x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 on gpu-4 was slow but cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 have high p95 latency (41989 ms and 40188 ms) while replica-3 and replica-4 are weighted 0",
+          "replica-1 and replica-2 are on rack-a (gpu-1 and gpu-2), while replica-3 and replica-4 are on rack-b (gpu-5 and gpu-4)",
+          "The rollback of server_build from serve-1.8.0 to serve-1.7.2 was done on replica-1, replica-2, replica-4 at step 50, and on replica-3 at step 58. If the rollback failed on replica-1 and replica-2, they might still be running serve-1.8.0",
+          "The gateway errors and timeouts suggest that replicas are timing out, which could be due to a bad server_build"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms, and errors show 'upstream timeout after 30000ms'",
+          "If replicas are slow due to a bad server_build, the gateway timeout might be too low, causing errors",
+          "However, the gateway p95 latency is 41901 ms, which is above the timeout, so timeouts are expected if replicas are slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "stalled:workers",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers are dispatching 89 req/s, which is half of normal (180 req/s)",
+          "Queue backlog is 3432 requests, indicating workers are not processing fast enough",
+          "Workers max_concurrency is 64, which might be too low if replicas are slow and requests are timing out, causing retries and congestion"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-1",
+          "contains": "serve-1.8.0"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-1 is still running serve-1.8.0 despite rollback attempt"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-2",
+          "contains": "serve-1.8.0"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-2 is still running serve-1.8.0 despite rollback attempt"
+        }
+       ],
+       "summary": "Investigating whether replica-1 and replica-2 are still running the bad server_build serve-1.8.0 despite the rollback attempt."
+      }
+     },
+     {
+      "step": 154,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "replica-4 was rolled back to serve-1.7.2 at step 50",
+          "replica-4 weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Incoming traffic is 1.12x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 on gpu-4 was slow but cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 have high p95 latency (50613 ms and 52110 ms) while replica-3 and replica-4 are weighted 0",
+          "replica-1 and replica-2 are on rack-a (gpu-1 and gpu-2), while replica-3 and replica-4 are on rack-b (gpu-5 and gpu-4)",
+          "The rollback of server_build from serve-1.8.0 to serve-1.7.2 was done on replica-1, replica-2, replica-4 at step 50, and on replica-3 at step 58. If the rollback failed on replica-1 and replica-2, they might still be running serve-1.8.0",
+          "The gateway errors and timeouts suggest that replicas are timing out, which could be due to a bad server_build"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms, and errors show 'upstream timeout after 30000ms'",
+          "If replicas are slow due to a bad server_build, the gateway timeout might be too low, causing errors",
+          "However, the gateway p95 latency is 52526 ms, which is above the timeout, so timeouts are expected if replicas are slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "stalled:workers",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers are dispatching 89 req/s, which is half of normal (180 req/s)",
+          "Queue backlog is 4393 requests, indicating workers are not processing fast enough",
+          "Workers max_concurrency is 64, which might be too low if replicas are slow and requests are timing out, causing retries and congestion"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-1",
+           "replica-2"
+          ]
+         },
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "Re-rollback replica-1 and replica-2 to ensure they are on serve-1.7.2, as the previous rollback may have failed."
+        }
+       ],
+       "summary": "Re-rollback server_build on replica-1 and replica-2 to serve-1.7.2 to fix suspected failed rollback causing high latency and gateway errors."
+      }
+     },
+     {
+      "step": 166,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "replica-4 was rolled back to serve-1.7.2 at step 50",
+          "replica-4 weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.8
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 on gpu-4 was slow but cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.8
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 have high p95 latency (59861 ms and 61279 ms) while replica-3 and replica-4 are weighted 0",
+          "replica-1 and replica-2 are on rack-a (gpu-1 and gpu-2), while replica-3 and replica-4 are on rack-b (gpu-5 and gpu-4)",
+          "Rollback to serve-1.7.2 at step 50 did not clear symptoms; rollback to serve-1.7.1 at step 154 also did not clear symptoms",
+          "Gateway errors show 'upstream timeout after 30000ms'"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms, and errors show 'upstream timeout after 30000ms'",
+          "Gateway p95 latency is 56294 ms, above the timeout, so timeouts are expected if replicas are slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue"
+         ],
+         "evidence": [
+          "Workers are dispatching 89 req/s, which is half of normal (180 req/s)",
+          "Queue backlog is 5080 requests, indicating workers are not processing fast enough",
+          "Workers max_concurrency is 64, which might be too low if replicas are slow and requests are timing out, causing retries and congestion"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-1",
+          "contains": "gpu"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-1 and replica-2 are slow due to GPU issues on rack-a, since rollback did not help"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-2",
+          "contains": "gpu"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-2 is slow due to GPU issues on rack-a, since rollback did not help"
+        }
+       ],
+       "summary": "Rollback of server_build on replica-1 and replica-2 did not clear symptoms, so I am investigating whether the slowness is due to GPU node issues on rack-a rather than the server build."
+      }
+     },
+     {
+      "step": 166,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 was rolled back to serve-1.7.2 at step 50",
+          "replica-4 weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 on gpu-4 was slow but cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 have high p95 latency (59861 ms and 61279 ms) while replica-3 and replica-4 are weighted 0",
+          "replica-1 and replica-2 are on rack-a (gpu-1 and gpu-2), while replica-3 and replica-4 are on rack-b (gpu-5 and gpu-4)",
+          "Rollback to serve-1.7.2 at step 50 did not clear symptoms; rollback to serve-1.7.1 at step 154 also did not clear symptoms",
+          "Gateway errors show 'upstream timeout after 30000ms'"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.85
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms, and errors show 'upstream timeout after 30000ms'",
+          "Gateway p95 latency is 56294 ms, above the timeout, so timeouts are expected if replicas are slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue"
+         ],
+         "evidence": [
+          "Workers are dispatching 89 req/s, which is half of normal (180 req/s)",
+          "Queue backlog is 5080 requests, indicating workers are not processing fast enough",
+          "Workers max_concurrency is 64, which might be too low if replicas are slow and requests are timing out, causing retries and congestion"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H7",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:gateway",
+          "errors:gateway",
+          "backlog:queue",
+          "drops:queue"
+         ],
+         "evidence": [
+          "All replicas on rack-a (gpu-1, gpu-2) are slow, while rack-b replicas are healthy but weighted 0",
+          "Rollback of server_build on replica-1 and replica-2 did not clear symptoms",
+          "Replica metrics show stable memory, no restarts, and normal output tokens, suggesting the model itself is fine",
+          "The path includes identity-service, which is external and owned by another team; a slowdown there could cause timeouts and queue buildup"
+         ],
+         "status": "suspected",
+         "confidence": 0.75
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "identity-service",
+          "contains": "latency"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Check if identity-service is slow, which would explain timeouts and queue buildup despite healthy replicas"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "gateway",
+          "contains": "identity"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Look for errors or timeouts related to identity-service in gateway logs"
+        }
+       ],
+       "summary": "Rollback of server_build on replica-1 and replica-2 did not clear symptoms, and replica metrics look healthy, so I suspect the external identity-service is causing the slowdown; I will inspect it before taking further action."
+      }
+     },
+     {
+      "step": 166,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 rolled back to serve-1.7.2 at step 50",
+          "weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.6
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.6
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 slow while replica-3 and replica-4 weighted 0",
+          "Both rollbacks to serve-1.7.2 and serve-1.7.1 did not clear symptoms",
+          "Replica-1/2 on rack-a gpu-1/gpu-2, healthy replicas on rack-b"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.55
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms; errors show 'upstream timeout after 30000ms'",
+          "Gateway p95 56294 ms exceeds timeout"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue"
+         ],
+         "evidence": [
+          "Workers dispatching 89 req/s vs normal 180",
+          "Backlog 5080 requests, queue full, drops",
+          "max_concurrency 64"
+         ],
+         "status": "suspected",
+         "confidence": 0.45
+        },
+        {
+         "id": "H7",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:gateway",
+          "errors:gateway",
+          "backlog:queue",
+          "drops:queue"
+         ],
+         "evidence": [
+          "Only rack-a replicas (replica-1/gpu-1, replica-2/gpu-2) are slow; rack-b replicas healthy but idle",
+          "Rollbacks on replica-1/2 did not clear symptoms",
+          "Replica metrics stable, no restarts, normal output tokens",
+          "Path passes through external identity-service owned by another team"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-3",
+          "weight": 1
+         },
+         "hypothesis": "H7",
+         "purpose": "fix",
+         "why": "Route traffic to healthy rack-b replica-3 to restore serving while rack-a replicas are slow"
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 1
+         },
+         "hypothesis": "H7",
+         "purpose": "fix",
+         "why": "Also restore replica-4 weight since it is healthy on rack-b and helps drain backlog"
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity team",
+          "summary": "identity-service slowdown suspected: only rack-a replicas (gpu-1/gpu-2) show ~60s p95 while identical rack-b replicas are healthy; rollbacks of server_build did not help. Gateway hits 30s upstream timeouts causing 100% gateway errors and queue backlog."
+         },
+         "hypothesis": "H7",
+         "purpose": "escalate",
+         "why": "identity-service is another team's service; need their investigation"
+        }
+       ],
+       "summary": "Rack-a replicas slow despite rollbacks; restore healthy rack-b replica capacity and escalate suspected identity-service slowdown."
+      }
+     },
+     {
+      "step": 174,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 rolled back to serve-1.7.2 at step 50",
+          "weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 slow while replica-3 and replica-4 weighted 0",
+          "Both rollbacks to serve-1.7.2 and serve-1.7.1 did not clear symptoms",
+          "Replica-1/2 on rack-a gpu-1/gpu-2, healthy replicas on rack-b"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms; errors show 'upstream timeout after 30000ms'",
+          "Gateway p95 56294 ms exceeds timeout"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers dispatching 89 req/s vs normal 180",
+          "Backlog 2322 requests, queue full",
+          "max_concurrency 64"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H7",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:gateway",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Only rack-a replicas (replica-1/gpu-1, replica-2/gpu-2) are slow; rack-b replicas healthy but idle",
+          "Rollbacks on replica-1/2 did not clear symptoms",
+          "Replica metrics stable, no restarts, normal output tokens",
+          "Path passes through external identity-service owned by another team"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "identity-service",
+          "contains": "timeout"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Check if identity-service logs show timeouts or errors for rack-a requests to confirm external dependency issue."
+        }
+       ],
+       "summary": "Investigating identity-service logs for rack-a timeouts to confirm external dependency hypothesis."
+      }
+     },
+     {
+      "step": 174,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 rolled back to serve-1.7.2 at step 50",
+          "weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 slow while replica-3 and replica-4 weighted 0",
+          "Both rollbacks to serve-1.7.2 and serve-1.7.1 did not clear symptoms",
+          "Replica-1/2 on rack-a gpu-1/gpu-2, healthy replicas on rack-b"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms; errors show 'upstream timeout after 30000ms'",
+          "Gateway p95 56294 ms exceeds timeout"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers dispatching 89 req/s vs normal 180",
+          "Backlog 2322 requests, queue full",
+          "max_concurrency 64"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H7",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:gateway",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Only rack-a replicas (replica-1/gpu-1, replica-2/gpu-2) are slow; rack-b replicas healthy but idle",
+          "Rollbacks on replica-1/2 did not clear symptoms",
+          "Replica metrics stable, no restarts, normal output tokens",
+          "Path passes through external identity-service owned by another team"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "identity-service",
+          "contains": "timeout"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Check if identity-service logs show timeouts or errors for rack-a requests"
+        }
+       ],
+       "summary": "Escalated to identity team; inspecting identity-service logs for timeout evidence."
+      }
+     },
+     {
+      "step": 174,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 rolled back to serve-1.7.2 at step 50",
+          "weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 slow while replica-3 and replica-4 weighted 0",
+          "Both rollbacks to serve-1.7.2 and serve-1.7.1 did not clear symptoms",
+          "Replica-1/2 on rack-a gpu-1/gpu-2, healthy replicas on rack-b"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms; errors show 'upstream timeout after 30000ms'",
+          "Gateway p95 56294 ms exceeds timeout"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers dispatching 89 req/s vs normal 180",
+          "Backlog 2322 requests, queue full",
+          "max_concurrency 64"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H7",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:gateway",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Only rack-a replicas (replica-1/gpu-1, replica-2/gpu-2) are slow; rack-b replicas healthy but idle",
+          "Rollbacks on replica-1/2 did not clear symptoms",
+          "Replica metrics stable, no restarts, normal output tokens",
+          "Path passes through external identity-service owned by another team"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "identity-service",
+          "contains": "timeout"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Check if identity-service is timing out for rack-a replicas specifically"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "identity"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Check if replica-1 canary answers fail on identity-related queries"
+        }
+       ],
+       "summary": "Investigating if identity-service is causing rack-a replica slowness by inspecting logs and canaries."
+      }
+     },
+     {
+      "step": 176,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 rolled back to serve-1.7.2 at step 50",
+          "weight set to 0 at step 144 cleared slow:replica-4"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Workers dispatching 89 req/s vs normal 180"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 cleared when weight set to 0",
+          "Other replicas on different nodes are healthy"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "replica-1 and replica-2 slow while replica-3 and replica-4 weighted 0",
+          "Both rollbacks to serve-1.7.2 and serve-1.7.1 did not clear symptoms",
+          "Replica-1/2 on rack-a gpu-1/gpu-2, healthy replicas on rack-b"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout is 30000 ms; errors show 'upstream timeout after 30000ms'",
+          "Gateway p95 56294 ms exceeds timeout"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H6",
+         "type": "overload",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Workers dispatching 89 req/s vs normal 180",
+          "Backlog 2322 requests, queue full",
+          "max_concurrency 64"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H7",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:gateway",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Only rack-a replicas (replica-1/gpu-1, replica-2/gpu-2) are slow; rack-b replicas healthy but idle",
+          "Rollbacks on replica-1/2 did not clear symptoms",
+          "Replica metrics stable, no restarts, normal output tokens",
+          "Path passes through external identity-service owned by another team"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity-team",
+          "summary": "All replicas slow (p95 ~12s) and gateway timeouts; rack-a and rack-b both affected, rollbacks and weight changes failed; suspect external identity-service bottleneck."
+         },
+         "hypothesis": "H7",
+         "purpose": "escalate",
+         "why": "Evidence points to external dependency; not ours to fix."
+        }
+       ],
+       "summary": "Escalating to identity team as all replicas are slow and the external identity-service is the shared bottleneck."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 166,
+      "team": "identity team",
+      "summary": "identity-service slowdown suspected: only rack-a replicas (gpu-1/gpu-2) show ~60s p95 while identical rack-b replicas are healthy; rollbacks of server_build did not help. Gateway hits 30s upstream timeouts causing 100% gateway errors and queue backlog.",
+      "hypothesis": "H7",
+      "automatic": false
+     },
+     {
+      "step": 176,
+      "team": "identity-team",
+      "summary": "All replicas slow (p95 ~12s) and gateway timeouts; rack-a and rack-b both affected, rollbacks and weight changes failed; suspect external identity-service bottleneck.",
+      "hypothesis": "H7",
+      "automatic": false
+     }
+    ],
+    "changes": 4,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 182,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.013075945700000001,
+  "calls": 52,
+  "tokens_in": 103492,
+  "tokens_out": 29602
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 33,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "replica_crash",
+   "step": 36,
+   "target": [
+    "replica-3"
+   ],
+   "cause": "replica-3 crashed and did not come back",
+   "fix": "restart:replica-3",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "memory_leak",
+   "step": 43,
+   "target": [],
+   "cause": "server_build serve-1.8.0 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 33,
+   "time": "2026-10-30T09:05:30",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 43,
+   "time": "2026-10-30T09:07:10",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 50,
+   "time": "2026-10-30T09:08:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 58,
+   "time": "2026-10-30T09:09:40",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 154,
+   "time": "2026-10-30T09:25:40",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.7.1",
+   "scope": [
+    "replica-1",
+    "replica-2"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

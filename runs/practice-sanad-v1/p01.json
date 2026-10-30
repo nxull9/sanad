@@ -1,0 +1,34 @@
+{
+ "score": {
+  "scenario": "p01",
+  "faults": 0,
+  "success": true,
+  "false_alarm": false,
+  "detected": false,
+  "detect_seconds": null,
+  "recover_seconds": null,
+  "causes": [],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 0,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [],
+ "changes": []
+}

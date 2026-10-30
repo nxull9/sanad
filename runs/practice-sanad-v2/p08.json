@@ -1,0 +1,179 @@
+{
+ "score": {
+  "scenario": "p08",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 40,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-2"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 8.4e-05,
+  "tokens_in": 17095,
+  "tokens_out": 3526,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "ecc:gpu-2",
+     "wrong_answers:replica-2"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "gpu-2"
+      ],
+      "setting": null,
+      "explains": [
+       "ecc:gpu-2",
+       "wrong_answers:replica-2"
+      ],
+      "evidence": [
+       "gpu-2 logged ECC errors (Xid 94)",
+       "only replica-2 on gpu-2 answers canary questions wrongly",
+       "other replicas on healthy nodes are correct"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 42 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "drain",
+      "args": {
+       "node": "gpu-2"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The GPU node has hardware errors (ECC) causing incorrect outputs. Draining moves the affected replica to a spare node to restore service quality.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "gpu-2"
+       ]
+      },
+      "result": "replica-2 moving gpu-2 -> gpu-5; gpu-2 drained",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "ecc:gpu-2",
+        "wrong_answers:replica-2"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-2",
+       "wrong_answers:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-2"
+         ],
+         "setting": null,
+         "explains": [
+          "ecc:gpu-2",
+          "wrong_answers:replica-2"
+         ],
+         "evidence": [
+          "gpu-2 logged ECC errors (Xid 94)",
+          "only replica-2 on gpu-2 answers canary questions wrongly",
+          "other replicas on healthy nodes are correct"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-2"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The GPU node has hardware errors (ECC) causing incorrect outputs. Draining moves the affected replica to a spare node to restore service quality."
+        }
+       ],
+       "summary": "Suspecting silent corruption on gpu-2 due to ECC errors and specific wrong answers from replica-2; draining gpu-2 to migrate traffic to healthy nodes."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 54,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0011454665,
+  "calls": 9,
+  "tokens_in": 17095,
+  "tokens_out": 3526
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "gpu_corruption",
+   "step": 38,
+   "target": [
+    "gpu-2"
+   ],
+   "cause": "gpu-2 silent data corruption",
+   "fix": "drain:gpu-2",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  }
+ ],
+ "changes": []
+}

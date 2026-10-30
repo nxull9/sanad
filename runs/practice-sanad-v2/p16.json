@@ -1,0 +1,399 @@
+{
+ "score": {
+  "scenario": "p16",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 140,
+  "causes": [
+   {
+    "fault": "replica_crash",
+    "target": [
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "memory_leak",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 0,
+  "cost": 0.000198,
+  "tokens_in": 53633,
+  "tokens_out": 10857,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "down:replica-3",
+     "restarting:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "crash",
+      "component": [
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "evidence": [
+       "ERROR replica-3: segfault in attention kernel; process exited with code 139"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 40 restart -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "evidence": [
+       "All replicas upgraded to serve-1.8.0 at step 43",
+       "All replicas show identical memory leak pattern (rising ~1.5-1.7 pts/step)",
+       "Memory usage is well above normal steady state (68% vs 55%)"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 50 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Replica crashed with a segfault (exit code 139). Restarting the process is the standard recovery for a software crash on a healthy node.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "crash",
+       "setting": null,
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "replica-3 restarting",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "down:replica-3",
+        "restarting:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 50,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "The memory leak affects all replicas uniformly after the serve-1.8.0 upgrade, indicating a regression in the new server build.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 58,
+       "cleared": [
+        "memory:replica-1",
+        "memory:replica-2",
+        "memory:replica-3",
+        "memory:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-3",
+       "restarting:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "crash",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-3",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "ERROR replica-3: segfault in attention kernel; process exited with code 139"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "replica-3"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Replica crashed with a segfault (exit code 139). Restarting the process is the standard recovery for a software crash on a healthy node."
+        }
+       ],
+       "summary": "Identified a segfault in replica-3 causing it to go down; restarting the replica to restore service."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "crash",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-3",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "ERROR replica-3: segfault in attention kernel; process exited with code 139"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-1",
+          "memory:replica-2",
+          "memory:replica-3",
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "All replicas upgraded to serve-1.8.0 at step 43",
+          "All replicas show identical memory leak pattern (rising ~1.5-1.7 pts/step)",
+          "Memory usage is well above normal steady state (68% vs 55%)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "The memory leak affects all replicas uniformly after the serve-1.8.0 upgrade, indicating a regression in the new server build."
+        }
+       ],
+       "summary": "Rolling back the server_build setting on all replicas to address the suspected memory leak introduced by the serve-1.8.0 release."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 60,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0041136736,
+  "calls": 29,
+  "tokens_in": 53633,
+  "tokens_out": 10857
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 33,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "replica_crash",
+   "step": 36,
+   "target": [
+    "replica-3"
+   ],
+   "cause": "replica-3 crashed and did not come back",
+   "fix": "restart:replica-3",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "memory_leak",
+   "step": 43,
+   "target": [],
+   "cause": "server_build serve-1.8.0 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 33,
+   "time": "2026-10-30T09:05:30",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 43,
+   "time": "2026-10-30T09:07:10",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 50,
+   "time": "2026-10-30T09:08:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

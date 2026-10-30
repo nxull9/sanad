@@ -1,0 +1,209 @@
+{
+ "score": {
+  "scenario": "p11",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 40,
+  "causes": [
+   {
+    "fault": "memory_leak",
+    "target": [
+     "replica-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 8.5e-05,
+  "tokens_in": 22084,
+  "tokens_out": 4295,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "memory:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-4"
+      ],
+      "evidence": [
+       "replica-4 is the only replica with server_build=serve-1.8.0* (new)",
+       "change log shows serve-1.7.2 -> serve-1.8.0 on replica-4 at step 34",
+       "memory leak symptom started after step 34 and is unique to replica-4"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 38 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Roll back the new server build on replica-4 to rule out the release as the cause of the memory leak.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-4']",
+      "verified": {
+       "step": 46,
+       "cleared": [
+        "memory:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with server_build=serve-1.8.0* (new)",
+          "change log shows serve-1.7.2 -> serve-1.8.0 on replica-4 at step 34",
+          "memory leak symptom started after step 34 and is unique to replica-4"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Roll back the new server build on replica-4 to rule out the release as the cause of the memory leak."
+        }
+       ],
+       "summary": "Suspect a memory leak in the new server build (serve-1.8.0) on replica-4; rolling back to previous version."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 48,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0017524563999999998,
+  "calls": 13,
+  "tokens_in": 22084,
+  "tokens_out": 4295
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "memory_leak",
+   "step": 34,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "server_build serve-1.8.0 deployed to replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

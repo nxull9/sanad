@@ -1,0 +1,1543 @@
+{
+ "score": {
+  "scenario": "p18",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 6,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 2,
+  "approvals": 0,
+  "model_calls": 12,
+  "strong_calls": 11,
+  "cost": 0.00309,
+  "tokens_in": 132361,
+  "tokens_out": 36286,
+  "escalations": [
+   {
+    "step": 82,
+    "team": "identity",
+    "summary": "Incoming traffic 1.82x normal causing overload; identity-service may be adding load or delaying auth; please check for issues.",
+    "hypothesis": "H2",
+    "automatic": false
+   },
+   {
+    "step": 84,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4, slow:replica-5. Ledger: H1 bad_release tokenizer on ['replica-3'] [fixed]; H2 overload max_concurrency on ['workers', 'queue'] [escalated]; H3 bad_config timeout_ms on ['gateway'] [suspected]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "long_answers:replica-3",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-3"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "long_answers:replica-3",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "replica-3 rolled back to tok-2.1 at step 38",
+       "symptoms cleared"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 38 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "workers",
+       "queue"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "evidence": [
+       "incoming traffic 224 req/s (1.82x normal)",
+       "queue backlog 4884 requests",
+       "all replicas p95 >24s",
+       "workers max_concurrency=64 unchanged"
+      ],
+      "confidence": 0.7,
+      "attempts": 2,
+      "history": [
+       "step 46 set_weight -> partly_fixed",
+       "step 46 scale_out -> partly_fixed",
+       "step 58 set_weight -> partly_fixed",
+       "step 68 set_weight -> not_fixed",
+       "step 68 scale_out -> not_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "gateway"
+      ],
+      "setting": "timeout_ms",
+      "explains": [
+       "slow:gateway"
+      ],
+      "evidence": [
+       "gateway timeout errors at step 52",
+       "gateway p95 latency 24023 ms exceeds timeout 30000 ms",
+       "all replicas slow but gateway errors only appear when timeout is hit"
+      ],
+      "confidence": 0.3,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback the problematic tokenizer change on replica-3 to restore correct Arabic text processing and answer length.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "tokenizer",
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-3']",
+      "verified": {
+       "step": 46,
+       "cleared": [
+        "long_answers:replica-3",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 46,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-3",
+       "weight": 0.0
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "replica-3 just had a tokenizer rollback; it may still be warming up or have residual issues. Removing it from traffic reduces load on the system and lets it stabilize.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "replica-3 traffic weight 1.0 -> 0.0",
+      "verified": {
+       "step": 56,
+       "cleared": [
+        "slow:replica-3"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 46,
+      "action": "scale_out",
+      "args": {
+       "count": 1
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Adding a replica on a spare node increases capacity to handle the 1.72x traffic surge, reducing queue backlog and latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "added ['replica-5']",
+      "verified": {
+       "step": 56,
+       "cleared": [
+        "slow:replica-3"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 58,
+      "action": "rollback",
+      "args": {
+       "key": "timeout_ms",
+       "replicas": []
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Gateway timeout is too low for current high latency; increase to 60000 ms to reduce errors while overload persists.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "timeout_ms",
+       "component": [
+        "gateway"
+       ]
+      },
+      "result": "no earlier gateway timeout_ms to roll back to"
+     },
+     {
+      "step": 58,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-3",
+       "weight": 1.0
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Replica-3 is healthy now; bring it back to serve traffic and reduce load on other replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "replica-3 traffic weight 0.0 -> 1.0",
+      "verified": {
+       "step": 66,
+       "cleared": [
+        "drops:queue"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-4",
+        "slow:replica-5"
+       ]
+      }
+     },
+     {
+      "step": 68,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-3",
+       "weight": 0.0
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "replica-3 is still slow despite tokenizer fix; remove it from load to reduce queue backlog and latency for other replicas",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "replica-3 traffic weight 1.0 -> 0.0",
+      "verified": {
+       "step": 78,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-4",
+        "slow:replica-5"
+       ]
+      },
+      "undone": "replica-3 traffic weight 0.0 -> 1.0"
+     },
+     {
+      "step": 68,
+      "action": "scale_out",
+      "args": {
+       "count": 1
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "add one more replica on spare node gpu-6 to increase capacity and reduce queue backlog",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "added ['replica-6']",
+      "verified": {
+       "step": 78,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-4",
+        "slow:replica-5"
+       ]
+      },
+      "undone": "removed ['replica-6']"
+     },
+     {
+      "step": 82,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "Incoming traffic 1.82x normal causing overload; identity-service may be adding load or delaying auth; please check for issues."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Overload persists despite scaling and weight changes; external dependency may be contributing.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": "max_concurrency",
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "handed to identity"
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "long_answers:replica-3",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-3 is the only replica using tokenizer tok-2.2-beta (others use tok-2.1)",
+          "Change log shows tok-2.1 -> tok-2.2-beta on replica-3 at step 34",
+          "Symptoms started after step 34",
+          "Wrong answers show mojibake (UTF-8 interpreted as Latin-1/Windows-1252), indicating a character encoding mismatch likely caused by the new tokenizer's handling of Arabic bytes or vocab mapping"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback the problematic tokenizer change on replica-3 to restore correct Arabic text processing and answer length."
+        }
+       ],
+       "summary": "Rolled back the tokenizer on replica-3 from tok-2.2-beta to tok-2.1 to fix incorrect Arabic answers and long response lengths caused by the recent upgrade."
+      }
+     },
+     {
+      "step": 46,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 is the only replica using tokenizer tok-2.2-beta (others use tok-2.1)",
+          "Change log shows tok-2.1 -> tok-2.2-beta on replica-3 at step 34",
+          "Symptoms started after step 34",
+          "Wrong answers show mojibake (UTF-8 interpreted as Latin-1/Windows-1252), indicating a character encoding mismatch likely caused by the new tokenizer's handling of Arabic bytes or vocab mapping"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 211 req/s (1.72x normal)",
+          "queue backlog 915 requests (normal 0)",
+          "all replicas have p95 latency >8500 ms (fleet normal 3642 ms)",
+          "workers max_concurrency=64, unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated at current max_concurrency=64 under 1.72x traffic"
+        }
+       ],
+       "summary": "H1 fixed; suspect overload from 1.72x traffic overwhelming workers with max_concurrency=64, causing queue backlog and high latency across all replicas."
+      }
+     },
+     {
+      "step": 46,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 is the only replica using tokenizer tok-2.2-beta (others use tok-2.1)",
+          "Change log shows tok-2.1 -> tok-2.2-beta on replica-3 at step 34",
+          "Symptoms started after step 34",
+          "Wrong answers show mojibake (UTF-8 interpreted as Latin-1/Windows-1252), indicating a character encoding mismatch likely caused by the new tokenizer's handling of Arabic bytes or vocab mapping"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 211 req/s (1.72x normal)",
+          "queue backlog 915 requests (normal 0)",
+          "all replicas have p95 latency >8500 ms (fleet normal 3642 ms)",
+          "workers max_concurrency=64, unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-3",
+          "weight": 0.0
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "replica-3 just had a tokenizer rollback; it may still be warming up or have residual issues. Removing it from traffic reduces load on the system and lets it stabilize."
+        },
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 1
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Adding a replica on a spare node increases capacity to handle the 1.72x traffic surge, reducing queue backlog and latency."
+        }
+       ],
+       "summary": "Rolled back tokenizer on replica-3 (fixed its encoding issues); now addressing overload by removing replica-3 from traffic and scaling out by one replica."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 216 req/s (1.75x normal)",
+          "queue backlog 4957 requests",
+          "drops 863 requests in last 3 steps",
+          "all replicas p95 >29s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated or if max_concurrency is the bottleneck before changing it."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-5",
+          "contains": "gpu"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Replica-5 is new and slow; check if its GPU node is healthy or if it's just overloaded."
+        }
+       ],
+       "summary": "Overload on workers and replicas persists despite scaling out and weight changes; investigating worker concurrency and replica-5 GPU health before adjusting max_concurrency."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 216 req/s (1.75x normal)",
+          "queue backlog 4957 requests",
+          "drops 863 requests in last 3 steps",
+          "all replicas p95 >29s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "error"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are hitting errors or limits that could explain the queue backlog and drops despite normal dispatch rate."
+        }
+       ],
+       "summary": "Investigating worker logs for errors or bottlenecks to explain persistent queue backlog and drops despite normal dispatch rate."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 216 req/s (1.75x normal)",
+          "queue backlog 4957 requests",
+          "drops 863 requests in last 3 steps",
+          "all replicas p95 >29s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway timeout errors at step 52",
+          "gateway p95 latency 32546 ms exceeds timeout 30000 ms",
+          "all replicas slow but gateway errors only appear when timeout is hit"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "gateway",
+          "contains": "timeout"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if gateway timeout errors are due to replicas being slow or if gateway timeout is too low"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are at max_concurrency and if increasing it would help"
+        }
+       ],
+       "summary": "Investigating whether gateway timeout is too low causing errors and whether workers are saturated."
+      }
+     },
+     {
+      "step": 58,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 216 req/s (1.75x normal)",
+          "queue backlog 5100 requests",
+          "drops 1104 requests in last 3 steps",
+          "all replicas p95 >30s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.8
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway timeout errors at step 52",
+          "gateway p95 latency 32377 ms exceeds timeout 30000 ms",
+          "all replicas slow but gateway errors only appear when timeout is hit"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "timeout_ms",
+          "replicas": []
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Gateway timeout is too low for current high latency; increase to 60000 ms to reduce errors while overload persists."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-3",
+          "weight": 1.0
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Replica-3 is healthy now; bring it back to serve traffic and reduce load on other replicas."
+        }
+       ],
+       "summary": "Increase gateway timeout to 60000 ms to stop timeout errors and bring replica-3 back into service to help with overload."
+      }
+     },
+     {
+      "step": 66,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 220 req/s (1.78x normal)",
+          "queue backlog 4691 requests",
+          "all replicas p95 >23s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway timeout errors at step 52",
+          "gateway p95 latency 24735 ms exceeds timeout 30000 ms",
+          "all replicas slow but gateway errors only appear when timeout is hit"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "cpu"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are CPU-bound or if max_concurrency is the bottleneck"
+        }
+       ],
+       "summary": "Investigating worker CPU metrics to determine if overload is due to concurrency limit or other resource constraint."
+      }
+     },
+     {
+      "step": 66,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 220 req/s (1.78x normal)",
+          "queue backlog 4691 requests",
+          "all replicas p95 >23s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway timeout errors at step 52",
+          "gateway p95 latency 24735 ms exceeds timeout 30000 ms",
+          "all replicas slow but gateway errors only appear when timeout is hit"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replicas",
+          "contains": "gpu_temperature"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if all replicas are slow due to GPU overheating or overload; all replicas share similar latency, so need to see if hardware is a factor."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "error"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Look for worker-side errors or bottlenecks that could explain the queue backlog and slow dispatch."
+        }
+       ],
+       "summary": "All replicas are slow with a large queue backlog; investigating whether GPU overheating or worker errors are contributing to the overload before scaling further."
+      }
+     },
+     {
+      "step": 66,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 220 req/s (1.78x normal)",
+          "queue backlog 4691 requests",
+          "all replicas p95 >23s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway timeout errors at step 52",
+          "gateway p95 latency 24735 ms exceeds timeout 30000 ms",
+          "all replicas slow but gateway errors only appear when timeout is hit"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated at max_concurrency to confirm overload"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replicas",
+          "contains": "gpu_temperature"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check GPU temperatures to rule out overheating as a cause of slowness"
+        }
+       ],
+       "summary": "Investigating whether worker saturation or GPU overheating explains the fleet-wide slowness and backlog."
+      }
+     },
+     {
+      "step": 68,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 220 req/s (1.78x normal)",
+          "queue backlog 4691 requests",
+          "all replicas p95 >23s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway timeout errors at step 52",
+          "gateway p95 latency 24735 ms exceeds timeout 30000 ms",
+          "all replicas slow but gateway errors only appear when timeout is hit"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-3",
+          "weight": 0.0
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "replica-3 is still slow despite tokenizer fix; remove it from load to reduce queue backlog and latency for other replicas"
+        },
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 1
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "add one more replica on spare node gpu-6 to increase capacity and reduce queue backlog"
+        }
+       ],
+       "summary": "Remove replica-3 from traffic and add one replica on spare node to mitigate overload, while keeping gateway timeout hypothesis for later investigation."
+      }
+     },
+     {
+      "step": 82,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-3 rolled back to tok-2.1 at step 38",
+          "symptoms cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "slow:replica-5"
+         ],
+         "evidence": [
+          "incoming traffic 224 req/s (1.82x normal)",
+          "queue backlog 4884 requests",
+          "all replicas p95 >24s",
+          "workers max_concurrency=64 unchanged"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway timeout errors at step 52",
+          "gateway p95 latency 24023 ms exceeds timeout 30000 ms",
+          "all replicas slow but gateway errors only appear when timeout is hit"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "Incoming traffic 1.82x normal causing overload; identity-service may be adding load or delaying auth; please check for issues."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Overload persists despite scaling and weight changes; external dependency may be contributing."
+        }
+       ],
+       "summary": "Overload from high traffic persists; escalating to identity team while continuing to monitor."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 82,
+      "team": "identity",
+      "summary": "Incoming traffic 1.82x normal causing overload; identity-service may be adding load or delaying auth; please check for issues.",
+      "hypothesis": "H2",
+      "automatic": false
+     },
+     {
+      "step": 84,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4, slow:replica-5. Ledger: H1 bad_release tokenizer on ['replica-3'] [fixed]; H2 overload max_concurrency on ['workers', 'queue'] [escalated]; H3 bad_config timeout_ms on ['gateway'] [suspected]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 6,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 8 symptoms open"
+   }
+  ],
+  "cost": 0.0164286762,
+  "calls": 66,
+  "tokens_in": 132361,
+  "tokens_out": 36286
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_tokenizer",
+   "step": 34,
+   "target": [
+    "replica-3"
+   ],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-3",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 42,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

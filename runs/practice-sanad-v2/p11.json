@@ -1,0 +1,300 @@
+{
+ "score": {
+  "scenario": "p11",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 180,
+  "causes": [
+   {
+    "fault": "memory_leak",
+    "target": [
+     "replica-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.000436,
+  "tokens_in": 30168,
+  "tokens_out": 5741,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "memory:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-4"
+      ],
+      "evidence": [
+       "replica-4 is the only replica with server_build=serve-1.8.0* (others are serve-1.7.2*)",
+       "Change log shows serve-1.8.0 deployed to replica-4 at step 34",
+       "Memory leak symptom started after step 34",
+       "Rollback at step 38 did not clear the symptom; the rollback was undone at step 46, so replica-4 still runs serve-1.8.0"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 38 rollback -> not_fixed",
+       "step 52 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Roll back the suspected bad release (serve-1.8.0) on replica-4 to see if memory stabilizes.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-4']",
+      "verified": {
+       "step": 46,
+       "cleared": [],
+       "still_open": []
+      },
+      "undone": "set server_build on ['replica-4']"
+     },
+     {
+      "step": 52,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Previous rollback was undone; re-apply it to revert replica-4 to serve-1.7.2 and stop the memory leak.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-4']",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "memory:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "(UNEXPLAINED) memory:replica-4: replica-4 memory at 62% and rising 1.4 points per step (normal steady near 55%)"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with server_build=serve-1.8.0* (others are serve-1.7.2*)",
+          "Change log shows serve-1.8.0 deployed to replica-4 at step 34",
+          "Memory leak symptom started after step 34"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Roll back the suspected bad release (serve-1.8.0) on replica-4 to see if memory stabilizes."
+        }
+       ],
+       "summary": "Suspect a memory leak in the new server build serve-1.8.0 on replica-4; rolling it back to serve-1.7.2."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with server_build=serve-1.8.0* (others are serve-1.7.2*)",
+          "Change log shows serve-1.8.0 deployed to replica-4 at step 34",
+          "Memory leak symptom started after step 34",
+          "Rollback at step 38 did not clear the symptom; the rollback was undone at step 46, so replica-4 still runs serve-1.8.0"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Previous rollback was undone; re-apply it to revert replica-4 to serve-1.7.2 and stop the memory leak."
+        }
+       ],
+       "summary": "Re-roll back server_build on replica-4 to serve-1.7.2 to fix the memory leak caused by the bad release."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 62,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0022147395,
+  "calls": 17,
+  "tokens_in": 30168,
+  "tokens_out": 5741
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "memory_leak",
+   "step": 34,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "server_build serve-1.8.0 deployed to replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 52,
+   "time": "2026-10-30T09:08:40",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}
