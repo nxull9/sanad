@@ -1,0 +1,252 @@
+{
+ "score": {
+  "scenario": "h11",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "identity_outage",
+    "target": [
+     "identity-service"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 0,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 7.7e-05,
+  "tokens_in": 24352,
+  "tokens_out": 5583,
+  "escalations": [
+   {
+    "step": 38,
+    "team": "identity-team",
+    "summary": "Identity service is returning 503 Connection Refused to the gateway, causing a 62% error rate. This is an external dependency failure owned by the identity team.",
+    "hypothesis": "H1",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "errors:gateway"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "3x from step 35 ERROR gateway: 503 from identity-service: connection refused"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "workers",
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "incoming traffic: 155 req/s, 1.27x normal",
+       "autoscaler: no scaling action: within target utilisation"
+      ],
+      "confidence": 0.4,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "escalate",
+      "args": {
+       "team": "identity-team",
+       "summary": "Identity service is returning 503 Connection Refused to the gateway, causing a 62% error rate. This is an external dependency failure owned by the identity team."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "The primary cause of errors is identified as identity-service connectivity issues which are outside my scope to fix directly.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity-team"
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway: error rate 62.0%"
+         ],
+         "evidence": [
+          "3x from step 35 ERROR gateway: 503 from identity-service: connection refused"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway: error rate 62.0%"
+         ],
+         "evidence": [
+          "incoming traffic: 155 req/s, 1.27x normal",
+          "autoscaler: no scaling action: within target utilisation"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity-team",
+          "summary": "Identity service is returning 503 Connection Refused to the gateway, causing a 62% error rate. This is an external dependency failure owned by the identity team."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "The primary cause of errors is identified as identity-service connectivity issues which are outside my scope to fix directly."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "timeout"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "To determine if the slight traffic increase (1.27x) is contributing to timeouts or queueing issues in workers, although identity-service seems the primary culprit."
+        }
+       ],
+       "summary": "Escalating to identity team due to their service returning 503s; investigating worker logs for secondary overload symptoms."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 38,
+      "team": "identity-team",
+      "summary": "Identity service is returning 503 Connection Refused to the gateway, causing a 62% error rate. This is an external dependency failure owned by the identity team.",
+      "hypothesis": "H1",
+      "automatic": false
+     }
+    ],
+    "changes": 0,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 1 symptoms open"
+   }
+  ],
+  "cost": 0.0031399994000000002,
+  "calls": 13,
+  "tokens_in": 24352,
+  "tokens_out": 5583
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "identity_outage",
+   "step": 35,
+   "target": [
+    "identity-service"
+   ],
+   "cause": "identity-service (owned by the identity team) is down",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "page the identity team",
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 37,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

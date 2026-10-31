@@ -1,0 +1,239 @@
+{
+ "score": {
+  "scenario": "h09",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 200,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-1"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 2,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.000294,
+  "tokens_in": 4887,
+  "tokens_out": 1065,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "ecc:gpu-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-1"
+      ],
+      "setting": null,
+      "explains": [
+       "ecc:gpu-1"
+      ],
+      "evidence": [
+       "Log line 'Xid 94: contained ECC error' on gpu-1. Xid 94 typically indicates thermal throttling or overheating issues leading to memory errors.",
+       "gpu-1 logged 1 new ECC errors in the last 4 steps"
+      ],
+      "confidence": 0.7,
+      "attempts": 1,
+      "history": [
+       "step 40 drain -> not_fixed",
+       "step 56 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The GPU node is experiencing hardware errors (ECC/Xid 94). Draining moves the replica to a healthy spare node (gpu-5 or gpu-6) to restore service and isolate the faulty hardware.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [],
+       "still_open": []
+      },
+      "undone": "replica-1 moved back to gpu-1"
+     },
+     {
+      "step": 56,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Drain gpu-1 to move replica-1 to a spare node (gpu-5) and take gpu-1 out of service, preventing further ECC errors from affecting traffic.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 66,
+       "cleared": [
+        "ecc:gpu-1"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "(UNEXPLAINED) ecc:gpu-1: gpu-1 logged 1 new ECC errors in the last 10 steps"
+         ],
+         "evidence": [
+          "Log line 'Xid 94: contained ECC error' on gpu-1. Xid 94 typically indicates thermal throttling or overheating issues leading to memory errors."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The GPU node is experiencing hardware errors (ECC/Xid 94). Draining moves the replica to a healthy spare node (gpu-5 or gpu-6) to restore service and isolate the faulty hardware."
+        }
+       ],
+       "summary": "Draining gpu-1 due to detected ECC errors indicating potential hardware failure or overheating."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "ecc:gpu-1"
+         ],
+         "evidence": [
+          "Log line 'Xid 94: contained ECC error' on gpu-1. Xid 94 typically indicates thermal throttling or overheating issues leading to memory errors.",
+          "gpu-1 logged 1 new ECC errors in the last 4 steps"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Drain gpu-1 to move replica-1 to a spare node (gpu-5) and take gpu-1 out of service, preventing further ECC errors from affecting traffic."
+        }
+       ],
+       "summary": "Draining gpu-1 due to new ECC errors (Xid 94) indicating possible overheating, moving replica-1 to spare node gpu-5."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 68,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0004258055,
+  "calls": 3,
+  "tokens_in": 4887,
+  "tokens_out": 1065
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "gpu_corruption",
+   "step": 36,
+   "target": [
+    "gpu-1"
+   ],
+   "cause": "gpu-1 silent data corruption",
+   "fix": "drain:gpu-1",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  }
+ ],
+ "changes": []
+}

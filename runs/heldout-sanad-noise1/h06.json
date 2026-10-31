@@ -1,0 +1,426 @@
+{
+ "score": {
+  "scenario": "h06",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 380,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 1,
+  "model_calls": 3,
+  "strong_calls": 2,
+  "cost": 0.001715,
+  "tokens_in": 8225,
+  "tokens_out": 1849,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "All replicas have model_version=allam-34b-v2.3.",
+       "Every replica answers canary questions incorrectly with context-specific wrong values (e.g. '15 minutes' instead of '5').",
+       "Error pattern is consistent across replicas, suggesting a systemic model or template issue.",
+       "Rollback of model_version did not fix symptoms, and the change log shows a vectordb checksum mismatch since step 40."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 40 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": "active",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Logs show 'WARN vectordb: segment 7 checksum mismatch; serving cached segment' occurring since step 40.",
+       "All replicas share the same vectordb, so a corrupt index can affect all responses.",
+       "Rollback of model_version did not clear symptoms, pointing to a shared component like vectordb."
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 52 rebuild_index -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rolling back the model version from allam-34b-v2.3 to the previous stable version should restore correct answers if v2.3 is indeed the cause of the hallucination/wrong retrieval.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 48,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 52,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "The vectordb has a checksum mismatch in segment 7, and the index corruption explains all wrong answers across replicas. Rebuilding the index will replace the damaged segment.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": "active",
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 80,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas are on model_version=allam-34b-v2.3.",
+          "All replicas are answering canary questions incorrectly with specific wrong values (e.g., '15 minutes' instead of '5', '100 degrees' instead of '90').",
+          "The errors are consistent across all replicas, suggesting a systemic issue with the deployed model or its configuration rather than node-specific hardware failure.",
+          "No recent changes in the log, but the presence of a specific version 'v2.3' implies this is the current state. If v2.3 is known to be buggy or if it was just deployed (even if not logged in this snippet due to timing), it is the primary suspect for global degradation."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rolling back the model version from allam-34b-v2.3 to the previous stable version should restore correct answers if v2.3 is indeed the cause of the hallucination/wrong retrieval."
+        }
+       ],
+       "summary": "Suspecting bad_release of model_version allam-34b-v2.3 causing incorrect answers across all replicas; rolling back to previous version."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas have model_version=allam-34b-v2.3.",
+          "Every replica answers canary questions incorrectly with context-specific wrong values (e.g. '15 minutes' instead of '5').",
+          "Error pattern is consistent across replicas, suggesting a systemic model or template issue.",
+          "Rollback of model_version did not fix symptoms, and the change log shows a vectordb checksum mismatch since step 40."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": "active",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Logs show 'WARN vectordb: segment 7 checksum mismatch; serving cached segment' occurring since step 40.",
+          "All replicas share the same vectordb, so a corrupt index can affect all responses.",
+          "Rollback of model_version did not clear symptoms, pointing to a shared component like vectordb."
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "vectordb",
+          "contains": "checksum"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Confirm the frequency and impact of the checksum mismatch to decide on rebuild or failover."
+        }
+       ],
+       "summary": "Symptoms persist across all replicas; rollback of model_version did not help; vectordb checksum mismatch suggests index corruption as a likely cause."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "All replicas have model_version=allam-34b-v2.3.",
+          "Every replica answers canary questions incorrectly with context-specific wrong values (e.g. '15 minutes' instead of '5').",
+          "Error pattern is consistent across replicas, suggesting a systemic model or template issue.",
+          "Rollback of model_version did not fix symptoms, and the change log shows a vectordb checksum mismatch since step 40."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": "active",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Logs show 'WARN vectordb: segment 7 checksum mismatch; serving cached segment' occurring since step 40.",
+          "All replicas share the same vectordb, so a corrupt index can affect all responses.",
+          "Rollback of model_version did not clear symptoms, pointing to a shared component like vectordb."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "The vectordb has a checksum mismatch in segment 7, and the index corruption explains all wrong answers across replicas. Rebuilding the index will replace the damaged segment."
+        }
+       ],
+       "summary": "Rebuilding the primary vector database index to fix the segment 7 checksum mismatch that is causing wrong retrieval across all replicas."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 82,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0018177315,
+  "calls": 4,
+  "tokens_in": 8225,
+  "tokens_out": 1849
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "index_corruption",
+   "step": 34,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.2",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

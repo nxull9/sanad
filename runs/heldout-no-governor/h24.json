@@ -1,0 +1,1013 @@
+{
+ "score": {
+  "scenario": "h24",
+  "faults": 4,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": 570,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   },
+   {
+    "fault": "bad_template",
+    "target": [
+     "replica-4"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_model",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 5,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 1,
+  "model_calls": 6,
+  "strong_calls": 3,
+  "cost": 0.001437,
+  "tokens_in": 378093,
+  "tokens_out": 94843,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "long_answers:replica-2",
+     "long_answers:replica-3",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "long_answers:replica-2",
+       "wrong_answers:replica-2",
+       "long_answers:replica-3",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "Tokenizer rollback cleared long_answers.",
+       "Remaining wrong answers persist across all replicas equally, so tokenizer explains only the earlier long-answer symptom."
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Rebuild and failover cleared nothing; retrieval errors were part of broader model-release errors."
+      ],
+      "confidence": 0.85,
+      "attempts": 2,
+      "history": [
+       "step 50 rebuild_index -> not_fixed",
+       "step 78 failover_vectordb -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "Model rollback at step 86 cleared wrong_answers on replica-1,2,3.",
+       "replica-4 still wrong after model rollback."
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 86 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [],
+      "evidence": [
+       "Segment 7 checksum mismatch at step 59, rebuild verified at step 69.",
+       "Failover to standby did not change symptoms; retrieval errors now appear as part of broader model-release errors."
+      ],
+      "confidence": 0.2,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H5": {
+      "id": "H5",
+      "type": "bad_config",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "replica-4 is the only replica on template chat-tpl-13 (changed step 53, REL-2291).",
+       "replica-4 still answers wrongly after model_version rollback while replicas 1-3 cleared.",
+       "Canary shows verbose non-JSON Arabic answer, consistent with a chat template that ignores format instructions."
+      ],
+      "confidence": 0.75,
+      "attempts": 0,
+      "history": [
+       "step 94 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The symptoms correlate perfectly with the recent tokenizer change on these two replicas. Rolling back to the known-good tok-2.1 should restore correct Arabic handling and answer length.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "tokenizer",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-2', 'replica-3']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "long_answers:replica-2",
+        "long_answers:replica-3"
+       ],
+       "still_open": [
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Rebuilding the vector index should correct any corruption or stale entries in the primary vector database that are causing incorrect retrieval results.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 78,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 78,
+      "action": "failover_vectordb",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Rebuild did not clear the index corruption; switching to standby vector database to test if the standby has a clean index.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "vectordb primary -> standby",
+      "verified": {
+       "step": 86,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 86,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Wrong answers across all replicas began after the v2.4-rc release; revert to v2.3.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 94,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": [
+        "wrong_answers:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 94,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H5",
+      "purpose": "fix",
+      "why": "replica-4 is the only one on chat-tpl-13 and the only one still wrong after model rollback",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back template on ['replica-4']",
+      "verified": {
+       "step": 102,
+       "cleared": [
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "wrong_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Change log step 37 updated tokenizer to tok-2.2-beta on replica-2 and replica-3 only.",
+          "Symptoms (Arabic errors, long answers) are present on replica-2 and replica-3 but absent on replica-1 and replica-4 which use tok-2.1.",
+          "Canary examples show garbled Arabic text, consistent with a tokenizer mismatch or regression in the new vocab."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The symptoms correlate perfectly with the recent tokenizer change on these two replicas. Rolling back to the known-good tok-2.1 should restore correct Arabic handling and answer length."
+        }
+       ],
+       "summary": "Rolling back the tokenizer on replica-2 and replica-3 from tok-2.2-beta to tok-2.1 to fix Arabic generation errors and excessive output lengths caused by the bad config."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "wrong_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Change log step 37 updated tokenizer to tok-2.2-beta on replica-2 and replica-3 only.",
+          "Symptoms (Arabic errors, long answers) are present on replica-2 and replica-3 but absent on replica-1 and replica-4 which use tok-2.1.",
+          "Canary examples show garbled Arabic text, consistent with a tokenizer mismatch or regression in the new vocab."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas are answering the same canary question wrongly (providing incorrect policy details).",
+          "The error is consistent across all replicas despite different tokenizers (after rollback) or identical settings.",
+          "This suggests a systemic issue such as a bad model version deployed to all, or a shared dependency like the vector database containing outdated/incorrect documents."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "policy"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Verify if the wrong answer is consistent across all replicas for other policy questions to confirm systemic data/model issue vs isolated config."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "vectordb",
+          "contains": "query_latency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if vector DB queries are slow or failing, which might indicate index corruption or overload affecting retrieval quality."
+        }
+       ],
+       "summary": "Rollback of tokenizer fixed partial symptoms; remaining widespread wrong answers across all replicas suggest a systemic issue like bad model version or vector DB content, requiring further investigation into shared components."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "Tokenizer rollback cleared long_answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas return incorrect policy answers (e.g., '30 minutes' instead of '5') for the same canary question.",
+          "Basic factual and math canaries pass on all replicas, isolating the issue to document retrieval.",
+          "The error is consistent across all replicas despite identical model versions and tokenizers, pointing to a shared data source.",
+          "Canary results show specific documents (docs-ack-en, docs-drain-en, docs-retention-en) are returning wrong content or stale/wrong values."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Rebuilding the vector index should correct any corruption or stale entries in the primary vector database that are causing incorrect retrieval results."
+        }
+       ],
+       "summary": "Suspected vector database index corruption causing systematic wrong answers across all replicas; initiating index rebuild."
+      }
+     },
+     {
+      "step": 78,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "Tokenizer rollback cleared long_answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas return incorrect policy answers (e.g., '30 minutes' instead of '5') for the same canary question.",
+          "Basic factual and math canaries pass on all replicas, isolating the issue to document retrieval.",
+          "The error is consistent across all replicas despite identical model versions and tokenizers, pointing to a shared data source.",
+          "Canary results show specific documents (docs-ack-en, docs-drain-en, docs-retention-en) are returning wrong content or stale/wrong values.",
+          "Log shows segment 7 checksum mismatch at step 59, and rebuild completed at step 69 but symptoms persist."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "failover_vectordb",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Rebuild did not clear the index corruption; switching to standby vector database to test if the standby has a clean index."
+        }
+       ],
+       "summary": "Rebuilding the primary vector index did not resolve the wrong answers across all replicas; failing over to the standby vector database to see if it has a clean index."
+      }
+     },
+     {
+      "step": 86,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "wrong_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Tokenizer rollback cleared long_answers.",
+          "Remaining wrong answers persist across all replicas equally, so tokenizer explains only the earlier long-answer symptom."
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.5
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas moved to allam-34b-v2.4-rc at step 57, after incident opened; wrong answers include basic facts (Riyadh vs Jeddah/Mecca, leap year 364), not the retrieval-only pattern seen earlier.",
+          "Index rebuild (step 50) and vectordb failover (step 78) cleared nothing, ruling out shared index cause.",
+          "Wrong answers now span Arabic and English fact and retrieval, consistent with a bad model release touching every replica."
+         ],
+         "status": "suspected",
+         "confidence": 0.55
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Segment 7 checksum mismatch at step 59, rebuild verified at step 69.",
+          "Failover to standby did not change symptoms; retrieval errors now appear as part of broader model-release errors."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.2
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Wrong answers across all replicas began after the v2.4-rc release; revert to v2.3."
+        }
+       ],
+       "summary": "Wrong answers persist across all replicas after index and tokenizer fixes; the shared cause is the allam-34b-v2.4-rc release, so rolling back model_version on all replicas."
+      }
+     },
+     {
+      "step": 94,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "wrong_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Tokenizer rollback cleared long_answers.",
+          "Remaining wrong answers persist across all replicas equally, so tokenizer explains only the earlier long-answer symptom."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild and failover cleared nothing; retrieval errors were part of broader model-release errors."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.85
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Model rollback at step 86 cleared wrong_answers on replica-1,2,3.",
+          "replica-4 still wrong after model rollback."
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.8
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica on template chat-tpl-13 (changed step 53, REL-2291).",
+          "replica-4 still answers wrongly after model_version rollback while replicas 1-3 cleared.",
+          "Canary shows verbose non-JSON Arabic answer, consistent with a chat template that ignores format instructions."
+         ],
+         "status": "suspected",
+         "confidence": 0.75
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H5",
+         "purpose": "fix",
+         "why": "replica-4 is the only one on chat-tpl-13 and the only one still wrong after model rollback"
+        }
+       ],
+       "summary": "Model rollback fixed replicas 1-3; replica-4's remaining wrong answers point to its unique chat-tpl-13 template, so roll that back."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 5,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 104,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.05435727430000002,
+  "calls": 144,
+  "tokens_in": 378093,
+  "tokens_out": 94843
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_tokenizer",
+   "step": 37,
+   "target": [
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-2, replica-3",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "index_corruption",
+   "step": 45,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f4",
+   "kind": "bad_template",
+   "step": 53,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "template chat-tpl-13 deployed to replica-4",
+   "fix": "rollback:template",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f5",
+   "kind": "bad_model",
+   "step": 57,
+   "target": [],
+   "cause": "model_version allam-34b-v2.4-rc deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:model_version",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 53,
+   "time": "2026-10-30T09:08:50",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "chat template refresh"
+  },
+  {
+   "step": 57,
+   "time": "2026-10-30T09:09:30",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.4-rc",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "ALLaM 2.4 release candidate"
+  },
+  {
+   "step": 86,
+   "time": "2026-10-30T09:14:20",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.4-rc",
+   "new": "allam-34b-v2.3",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 94,
+   "time": "2026-10-30T09:15:40",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-13",
+   "new": "chat-tpl-12",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

@@ -1,0 +1,912 @@
+{
+ "score": {
+  "scenario": "h21",
+  "faults": 3,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 130,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-1"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "gpu_thermal",
+    "target": [
+     "gpu-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "identity_outage",
+    "target": [
+     "identity-service"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 7,
+  "strong_calls": 4,
+  "cost": 0.001851,
+  "tokens_in": 189039,
+  "tokens_out": 47633,
+  "escalations": [
+   {
+    "step": 50,
+    "team": "infra/hardware",
+    "summary": "gpu-4 in rack-b overheating at 92C with thermal throttling (clock 891MHz vs 1980). Replica-4 drained via weight 0; needs hardware/cooling inspection.",
+    "hypothesis": "H2",
+    "automatic": false
+   },
+   {
+    "step": 58,
+    "team": "identity-team",
+    "summary": "Identity-service is returning 503 Connection Refused, causing 62% error rate in gateway. This is the primary cause of remaining 'errors:gateway' symptom after replica-4 was drained. Requires immediate investigation by identity team.",
+    "hypothesis": "H3",
+    "automatic": false
+   },
+   {
+    "step": 68,
+    "team": "infrastructure",
+    "summary": "gpu-4 overheating (93C, throttled) persists after setting weight to 0. Node needs physical inspection or cooling fix.",
+    "hypothesis": "H2",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "ecc:gpu-1",
+     "wrong_answers:replica-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "gpu-1"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1"
+      ],
+      "evidence": [
+       "replica-1 on gpu-1 returned wrong answers while other replicas healthy",
+       "gpu-1 logged ECC errors (Xid 94)",
+       "drain cleared wrong answers"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 40 drain -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-4"
+      ],
+      "setting": null,
+      "explains": [
+       "hot:gpu-4"
+      ],
+      "evidence": [
+       "gpu-4 at 93C, clock throttled to 893 MHz",
+       "5x WARN gpu-4 thermal slowdown from step 42",
+       "replica-4 p95 8827ms vs fleet 3642ms",
+       "gateway p95 8889ms consistent with slow replica-4 backpressure"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 50 set_weight -> partly_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "9x ERROR gateway: 503 from identity-service: connection refused since step 49",
+       "identity-service is owned by identity team, not in our control"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "ECC errors and silent corruption indicate hardware failure; draining moves traffic to healthy nodes and isolates the faulty GPU.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "wrong_answers:replica-1"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 50,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 0
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Take the thermally throttled replica-4 out of rotation to cut latency and gateway errors",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-4"
+       ]
+      },
+      "result": "replica-4 traffic weight 1.0 -> 0",
+      "verified": {
+       "step": 58,
+       "cleared": [
+        "slow:gateway",
+        "slow:replica-4"
+       ],
+       "still_open": [
+        "errors:gateway",
+        "hot:gpu-4"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "escalate",
+      "args": {
+       "team": "infra/hardware",
+       "summary": "gpu-4 in rack-b overheating at 92C with thermal throttling (clock 891MHz vs 1980). Replica-4 drained via weight 0; needs hardware/cooling inspection."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Overheating GPU needs hands-on cooling/hardware fix",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-4"
+       ]
+      },
+      "result": "handed to infra/hardware"
+     },
+     {
+      "step": 58,
+      "action": "escalate",
+      "args": {
+       "team": "identity-team",
+       "summary": "Identity-service is returning 503 Connection Refused, causing 62% error rate in gateway. This is the primary cause of remaining 'errors:gateway' symptom after replica-4 was drained. Requires immediate investigation by identity team."
+      },
+      "hypothesis": "H3",
+      "purpose": "escalate",
+      "why": "The remaining high error rate is caused by an external dependency failure (identity-service) which we cannot fix directly.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity-team"
+     },
+     {
+      "step": 68,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "gpu-4 overheating (93C, throttled) persists after setting weight to 0. Node needs physical inspection or cooling fix."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Overheating is a hardware issue that requires hands-on intervention; we have mitigated by removing traffic but cannot fix the root cause.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-4"
+       ]
+      },
+      "result": "handed to infrastructure"
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "ecc:gpu-1",
+       "wrong_answers:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 on gpu-1 returns wrong answers for canary questions while other replicas are healthy.",
+          "gpu-1 has logged 2 new ECC errors in the last 10 steps."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "ECC errors and silent corruption indicate hardware failure; draining moves traffic to healthy nodes and isolates the faulty GPU."
+        }
+       ],
+       "summary": "Suspecting GPU-1 hardware failure causing silent data corruption and wrong answers on replica-1; draining node gpu-1 to mitigate."
+      }
+     },
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4",
+       "slow:gateway",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 on gpu-1 returned wrong answers while other replicas healthy",
+          "gpu-1 logged ECC errors (Xid 94)",
+          "drain cleared wrong answers"
+         ],
+         "status": "fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gpu-4 at 92C, clock throttled to 891 MHz",
+          "5x WARN gpu-4 thermal slowdown from step 42",
+          "replica-4 p95 8827ms vs fleet 3642ms",
+          "gateway p95 8889ms consistent with slow replica-4 backpressure"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 0
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Take the thermally throttled replica-4 out of rotation to cut latency and gateway errors"
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra/hardware",
+          "summary": "gpu-4 in rack-b overheating at 92C with thermal throttling (clock 891MHz vs 1980). Replica-4 drained via weight 0; needs hardware/cooling inspection."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Overheating GPU needs hands-on cooling/hardware fix"
+        }
+       ],
+       "summary": "Drain thermally throttled replica-4 and escalate gpu-4 overheating to hardware team; gpu-1 ECC issue already fixed by drain."
+      }
+     },
+     {
+      "step": 58,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 on gpu-1 returned wrong answers while other replicas healthy",
+          "gpu-1 logged ECC errors (Xid 94)",
+          "drain cleared wrong answers"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gpu-4 at 92C, clock throttled to 891 MHz",
+          "5x WARN gpu-4 thermal slowdown from step 42",
+          "replica-4 p95 8827ms vs fleet 3642ms",
+          "gateway p95 8889ms consistent with slow replica-4 backpressure"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9,
+         "note": "Weight 0 removed load, but hot:gpu-4 persists and errors:gateway remains due to identity-service dependency."
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "9x ERROR gateway: 503 from identity-service: connection refused since step 49",
+          "identity-service is owned by identity team, not in our control"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity-team",
+          "summary": "Identity-service is returning 503 Connection Refused, causing 62% error rate in gateway. This is the primary cause of remaining 'errors:gateway' symptom after replica-4 was drained. Requires immediate investigation by identity team."
+         },
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "The remaining high error rate is caused by an external dependency failure (identity-service) which we cannot fix directly."
+        }
+       ],
+       "summary": "Escalated to identity team for 503 errors; gpu-4 overheating is mitigated via weight 0 but requires hardware intervention."
+      }
+     },
+     {
+      "step": 60,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 on gpu-1 returned wrong answers while other replicas healthy",
+          "gpu-1 logged ECC errors (Xid 94)",
+          "drain cleared wrong answers"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gpu-4 at 92C, clock throttled to 891 MHz",
+          "5x WARN gpu-4 thermal slowdown from step 42",
+          "replica-4 p95 8827ms vs fleet 3642ms",
+          "gateway p95 8889ms consistent with slow replica-4 backpressure"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "9x ERROR gateway: 503 from identity-service: connection refused since step 49",
+          "identity-service is owned by identity team, not in our control"
+         ],
+         "status": "escalated",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "gateway",
+          "contains": "identity-service"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Verify if the 503 errors are persistent or intermittent to confirm the external dependency status before concluding."
+        }
+       ],
+       "summary": "Gateway errors persist due to identity-service outage (H3) and GPU-4 overheating (H2); both escalated, waiting for external teams."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-1 on gpu-1 returned wrong answers while other replicas healthy",
+          "gpu-1 logged ECC errors (Xid 94)",
+          "drain cleared wrong answers"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4"
+         ],
+         "evidence": [
+          "gpu-4 at 92C, clock throttled to 891 MHz",
+          "5x WARN gpu-4 thermal slowdown from step 42",
+          "replica-4 p95 8827ms vs fleet 3642ms",
+          "gateway p95 8889ms consistent with slow replica-4 backpressure"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "9x ERROR gateway: 503 from identity-service: connection refused since step 49",
+          "identity-service is owned by identity team, not in our control"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "Identity team has been notified; waiting for them to resolve the 503 errors from identity-service."
+        }
+       ],
+       "summary": "Escalated identity-service 503 errors to identity team; waiting for their fix.",
+       "resolved": false
+      }
+     },
+     {
+      "step": 64,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 on gpu-1 returned wrong answers while other replicas healthy",
+          "gpu-1 logged ECC errors (Xid 94)",
+          "drain cleared wrong answers"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4"
+         ],
+         "evidence": [
+          "gpu-4 at 92C, clock throttled to 891 MHz",
+          "5x WARN gpu-4 thermal slowdown from step 42",
+          "replica-4 p95 8827ms vs fleet 3642ms",
+          "gateway p95 8889ms consistent with slow replica-4 backpressure"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "9x ERROR gateway: 503 from identity-service: connection refused since step 49",
+          "identity-service is owned by identity team, not in our control"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "Identity service is already escalated; no further action possible from our side."
+        }
+       ],
+       "summary": "All open symptoms are explained by existing hypotheses; H3 (identity-service) is escalated and awaiting external fix, H2 (gpu-4 overheating) is mitigated by setting weight to 0, H1 (gpu-1 corruption) is resolved by drain.",
+       "resolved": false
+      }
+     },
+     {
+      "step": 68,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-1 on gpu-1 returned wrong answers while other replicas healthy",
+          "gpu-1 logged ECC errors (Xid 94)",
+          "drain cleared wrong answers"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4"
+         ],
+         "evidence": [
+          "gpu-4 at 93C, clock throttled to 893 MHz",
+          "5x WARN gpu-4 thermal slowdown from step 42",
+          "replica-4 p95 8827ms vs fleet 3642ms",
+          "gateway p95 8889ms consistent with slow replica-4 backpressure"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "9x ERROR gateway: 503 from identity-service: connection refused since step 49",
+          "identity-service is owned by identity team, not in our control"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "gpu-4 overheating (93C, throttled) persists after setting weight to 0. Node needs physical inspection or cooling fix."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Overheating is a hardware issue that requires hands-on intervention; we have mitigated by removing traffic but cannot fix the root cause."
+        }
+       ],
+       "summary": "Escalated gpu-4 overheating to infrastructure team; gateway errors are from identity-service (already escalated); incident remains open.",
+       "resolved": false
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 50,
+      "team": "infra/hardware",
+      "summary": "gpu-4 in rack-b overheating at 92C with thermal throttling (clock 891MHz vs 1980). Replica-4 drained via weight 0; needs hardware/cooling inspection.",
+      "hypothesis": "H2",
+      "automatic": false
+     },
+     {
+      "step": 58,
+      "team": "identity-team",
+      "summary": "Identity-service is returning 503 Connection Refused, causing 62% error rate in gateway. This is the primary cause of remaining 'errors:gateway' symptom after replica-4 was drained. Requires immediate investigation by identity team.",
+      "hypothesis": "H3",
+      "automatic": false
+     },
+     {
+      "step": 68,
+      "team": "infrastructure",
+      "summary": "gpu-4 overheating (93C, throttled) persists after setting weight to 0. Node needs physical inspection or cooling fix.",
+      "hypothesis": "H2",
+      "automatic": false
+     }
+    ],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 2 symptoms open"
+   }
+  ],
+  "cost": 0.0272622379,
+  "calls": 83,
+  "tokens_in": 189039,
+  "tokens_out": 47633
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 36,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "gpu_corruption",
+   "step": 37,
+   "target": [
+    "gpu-1"
+   ],
+   "cause": "gpu-1 silent data corruption",
+   "fix": "drain:gpu-1",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "gpu_thermal",
+   "step": 42,
+   "target": [
+    "gpu-4"
+   ],
+   "cause": "gpu-4 fan failure: thermal throttling",
+   "fix": "drain:gpu-4",
+   "fixable": true,
+   "needs_human": "replace the fan on the node",
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "identity_outage",
+   "step": 49,
+   "target": [
+    "identity-service"
+   ],
+   "cause": "identity-service (owned by the identity team) is down",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "page the identity team",
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 36,
+   "time": "2026-10-30T09:06:00",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  }
+ ]
+}

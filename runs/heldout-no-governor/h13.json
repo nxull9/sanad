@@ -1,0 +1,554 @@
+{
+ "score": {
+  "scenario": "h13",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": 170,
+  "causes": [
+   {
+    "fault": "bad_quantization",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 3,
+  "strong_calls": 0,
+  "cost": 0.000378,
+  "tokens_in": 69003,
+  "tokens_out": 18146,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "quantization",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Rollback at step 42 fixed wrong answers."
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "Incoming traffic is 218 req/s (1.78x normal).",
+       "All replicas are slow, not just one.",
+       "Queue backlog is growing (2149 requests)."
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 50 scale_out -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "replica-2"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-2"
+      ],
+      "evidence": [
+       "Only replica-2 is slow after scale-out cleared others.",
+       "Replica-2 settings match healthy replicas.",
+       "Node gpu-2 shows no hardware errors in platform status."
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 60 restart -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "quantization",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback the unvalidated quantization setting that was deployed in step 37 and correlates with the onset of wrong answers.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "quantization",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back quantization on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 50,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Traffic is significantly above normal and all replicas are saturated. Adding capacity will reduce queue depth and latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-3",
+        "slow:replica-4"
+       ],
+       "still_open": [
+        "slow:replica-2"
+       ]
+      }
+     },
+     {
+      "step": 60,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Restarting the specific replica to clear potential silent GPU state corruption or memory leaks that cause slowness without crashing.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "replica-2"
+       ]
+      },
+      "result": "replica-2 restarting",
+      "verified": {
+       "step": 70,
+       "cleared": [
+        "slow:replica-2"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Change log step 37: quantization changed to int4-awq-unvalidated on all replicas.",
+          "All affected replicas share the 'int4-awq-unvalidated' setting.",
+          "The setting name explicitly contains 'unvalidated', suggesting potential instability or correctness issues.",
+          "Symptoms are consistent across all replicas, matching the scope of the change."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "quantization",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback the unvalidated quantization setting that was deployed in step 37 and correlates with the onset of wrong answers."
+        }
+       ],
+       "summary": "Suspect the new 'int4-awq-unvalidated' quantization setting introduced in step 37 is causing incorrect answers across all replicas; rolling back to previous quantization."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "Rollback at step 42 fixed wrong answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 216 req/s (1.77x normal).",
+          "All replicas are slow, not just one.",
+          "Queue backlog is growing (2149 requests).",
+          "Latency is high across the board, consistent with saturation."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Traffic is significantly above normal and all replicas are saturated. Adding capacity will reduce queue depth and latency."
+        }
+       ],
+       "summary": "The system is experiencing overload due to 1.77x normal traffic, causing high latency and queue backlog across all replicas; scaling out by 2 replicas is required to restore performance."
+      }
+     },
+     {
+      "step": 60,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Rollback at step 42 fixed wrong answers."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic is 218 req/s (1.78x normal).",
+          "All replicas are slow, not just one.",
+          "Queue backlog is growing (2149 requests)."
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-2"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "Only replica-2 is slow after scale-out cleared others.",
+          "Replica-2 settings match healthy replicas.",
+          "Node gpu-2 shows no hardware errors in platform status."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "replica-2"
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Restarting the specific replica to clear potential silent GPU state corruption or memory leaks that cause slowness without crashing."
+        }
+       ],
+       "summary": "Rolled back quantization and scaled out; now restarting replica-2 to address persistent slowness likely due to silent GPU corruption."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 72,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0107314038,
+  "calls": 32,
+  "tokens_in": 69003,
+  "tokens_out": 18146
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_quantization",
+   "step": 37,
+   "target": [],
+   "cause": "quantization int4-awq-unvalidated deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:quantization",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 43,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "fp8",
+   "new": "int4-awq-unvalidated",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "int4 to halve GPU memory"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "int4-awq-unvalidated",
+   "new": "fp8",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

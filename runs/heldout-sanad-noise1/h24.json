@@ -1,0 +1,2361 @@
+{
+ "score": {
+  "scenario": "h24",
+  "faults": 4,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   },
+   {
+    "fault": "bad_template",
+    "target": [
+     "replica-4"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_model",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 9,
+  "unneeded_changes": 2,
+  "blocked": 0,
+  "undone": 7,
+  "approvals": 1,
+  "model_calls": 10,
+  "strong_calls": 8,
+  "cost": 0.004716,
+  "tokens_in": 282754,
+  "tokens_out": 70102,
+  "escalations": [
+   {
+    "step": 138,
+    "team": "identity-service",
+    "summary": "All four model replicas give confident wrong factual answers (e.g. Makkah/Jeddah for Riyadh) across Arabic and English, fact and retrieval, after every model/template/tokenizer/server_build/vectordb fix was tried. Suspect upstream prompt/context corruption in identity-service; please verify what context is being passed to the queue.",
+    "hypothesis": "H9",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "long_answers:replica-2",
+     "long_answers:replica-3",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "long_answers:replica-2",
+       "long_answers:replica-3"
+      ],
+      "evidence": [
+       "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+      ],
+      "confidence": 0.6,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Template rollback cleared nothing."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 50 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "model_version rollback to v2.3 cleared nothing at step 70."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 62 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Rebuild and failover both cleared nothing; checksum WARN and rebuild-complete are logged."
+      ],
+      "confidence": 0.85,
+      "attempts": 2,
+      "history": [
+       "step 74 rebuild_index -> not_fixed",
+       "step 102 failover_vectordb -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H5": {
+      "id": "H5",
+      "type": "bad_config",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "replica-4 template rollback cleared nothing."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 114 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H6": {
+      "id": "H6",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "Template rollback cleared nothing."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 114 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H7": {
+      "id": "H7",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "server_build rollback to serve-1.7.1 cleared nothing at step 134, then undone."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 126 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H8": {
+      "id": "H8",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "All four replicas give confident wrong facts (makkah/jeddah for Riyadh) with identical settings after every config/model/template/tokenizer/vectordb fix was tried.",
+       "No restart attempted since symptoms began; four independent nodes failing identically is unlikely for silent corruption but restart is the remaining safe test."
+      ],
+      "confidence": 0.3,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     },
+     "H9": {
+      "id": "H9",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "identity-service is external and owned by another team; not instrumented in logs.",
+       "Wrong confident answers on all replicas across languages could come from upstream prompt/context corruption."
+      ],
+      "confidence": 0.3,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     },
+     "H10": {
+      "id": "H10",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "quantization",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "quantization=fp8 identical on all replicas; not in change log, but fp8 is the only remaining shared setting never tested."
+      ],
+      "confidence": 0.35,
+      "attempts": 1,
+      "history": [
+       "step 138 rollback -> not_fixed"
+      ],
+      "status": "not_fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The symptoms align perfectly with the recent tokenizer change on these two replicas. Rolling back to the known-good tok-2.1 should restore correct Arabic behavior and answer length.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "tokenizer",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-2', 'replica-3']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "long_answers:replica-2",
+        "long_answers:replica-3"
+       ],
+       "still_open": [
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "All replicas share the same template setting and are failing the same canary question. Rolling back the template to its previous version should restore correct behavior if the template is the cause.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back template on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 58,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set template on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 62,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "All four replicas share the v2.4-rc model rollout and all fail the same canaries; roll back to v2.3.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 70,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 74,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Vectordb segment checksum mismatch likely corrupts retrieval for all replicas; rebuild the index.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 102,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 102,
+      "action": "failover_vectordb",
+      "args": {},
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Rebuild of primary index did not clear wrong answers; failover to standby vectordb to test if standby has uncorrupted index.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "vectordb primary -> standby",
+      "verified": {
+       "step": 110,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "vectordb standby -> primary"
+     },
+     {
+      "step": 114,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H5",
+      "purpose": "fix",
+      "why": "replica-4 has template chat-tpl-13 (set at step 53) while others have chat-tpl-12; its Arabic errors differ from others, suggesting template mismatch.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back template on ['replica-4']",
+      "verified": {
+       "step": 122,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set template on ['replica-4']"
+     },
+     {
+      "step": 114,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H6",
+      "purpose": "fix",
+      "why": "replica-1/2/3 share template chat-tpl-12 and have Arabic/English errors; previous rollback to chat-tpl-11 was before current template was set, so try rolling back to the previous value (chat-tpl-11) again.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back template on ['replica-1', 'replica-2', 'replica-3']",
+      "verified": {
+       "step": 122,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ]
+      },
+      "undone": "set template on ['replica-1', 'replica-2', 'replica-3']"
+     },
+     {
+      "step": 126,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H7",
+      "purpose": "fix",
+      "why": "All other common settings have been ruled out; server_build is the only remaining shared factor that could cause wrong answers across all replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 134,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 138,
+      "action": "rollback",
+      "args": {
+       "key": "quantization",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H10",
+      "purpose": "experiment",
+      "why": "Only untested shared setting; test whether fp8 quantization is producing the wrong facts.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "quantization",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back quantization on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 146,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set quantization on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 138,
+      "action": "escalate",
+      "args": {
+       "team": "identity-service",
+       "summary": "All four model replicas give confident wrong factual answers (e.g. Makkah/Jeddah for Riyadh) across Arabic and English, fact and retrieval, after every model/template/tokenizer/server_build/vectordb fix was tried. Suspect upstream prompt/context corruption in identity-service; please verify what context is being passed to the queue."
+      },
+      "hypothesis": "H9",
+      "purpose": "escalate",
+      "why": "External service not instrumented; needs owner to check upstream context.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity-service"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "wrong_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Change log step 37 updated tokenizer to tok-2.2-beta on replica-2 and replica-3.",
+          "Symptoms (Arabic errors, long answers) are isolated to replicas with tok-2.2-beta.",
+          "Replicas with tok-2.1 (replica-1, replica-4) are healthy.",
+          "English performance is fine on affected replicas, suggesting the issue is specific to Arabic tokenization/decoding in the new tokenizer."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The symptoms align perfectly with the recent tokenizer change on these two replicas. Rolling back to the known-good tok-2.1 should restore correct Arabic behavior and answer length."
+        }
+       ],
+       "summary": "Suspect bad config (tokenizer upgrade) on replica-2 and replica-3 causing Arabic decoding issues; rolling back tokenizer to tok-2.1."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "Change log step 37 updated tokenizer to tok-2.2-beta on replica-2 and replica-3.",
+          "Symptoms (Arabic errors, long answers) were isolated to replicas with tok-2.2-beta.",
+          "Rollback cleared long_answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas are answering the same canary question incorrectly.",
+          "The error is consistent across all replicas despite them having identical settings (model_version, quantization, tokenizer=tok-2.1).",
+          "The template 'chat-tpl-12' is shared by all replicas.",
+          "The incorrect answer ('30 minutes' or '15 minutes') suggests a prompt injection or system prompt issue rather than a retrieval failure, as the model is hallucinating specific policy details instead of retrieving the correct one."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "All replicas share the same template setting and are failing the same canary question. Rolling back the template to its previous version should restore correct behavior if the template is the cause."
+        }
+       ],
+       "summary": "Suspect shared template change affecting all replicas; rolling back template on all replicas."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "Change log step 37 updated tokenizer to tok-2.2-beta on replica-2 and replica-3.",
+          "Symptoms (Arabic errors, long answers) were isolated to replicas with tok-2.2-beta.",
+          "Rollback cleared long_answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Rollback of template to chat-tpl-11 cleared nothing.",
+          "All four replicas fail the same canary questions with confident wrong specific facts (Riyadh->Jeddah/Mecca, 5->15 min), suggesting a bad model weight release rather than a template issue."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Change log step 57: ci-bot rolled allam-34b-v2.3 -> allam-34b-v2.4-rc on all four replicas (REL-2291).",
+          "All four replicas now fail both Arabic and English fact and retrieval canaries with a single consistent bad model answer.",
+          "Template rollback at step 50 cleared nothing, ruling out template.",
+          "Tokenizer issue already cleared; only remaining common change touching all replicas is model_version."
+         ],
+         "status": "suspected",
+         "confidence": 0.75
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "All four replicas share the v2.4-rc model rollout and all fail the same canaries; roll back to v2.3."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Confirm the failure pattern matches a model weight change rather than retrieval before/after rollback."
+        }
+       ],
+       "summary": "Tokenizers and templates are ruled out; the shared allam-34b-v2.4-rc rollout at step 57 on all four replicas is the best explanation for the uniform wrong answers, so roll it back to v2.3."
+      }
+     },
+     {
+      "step": 74,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "model_version rollback to v2.3 cleared nothing at step 70."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas fail retrieval and fact canaries with confident wrong specifics.",
+          "WARN vectordb: segment 7 checksum mismatch; serving cached segment at step 68.",
+          "Template and model_version rollbacks cleared nothing, pointing at shared vectordb."
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "Vectordb segment checksum mismatch likely corrupts retrieval for all replicas; rebuild the index."
+        }
+       ],
+       "summary": "Template and model rollbacks cleared nothing; new vectordb checksum-mismatch warning points to index corruption shared by all replicas, so rebuild the index."
+      }
+     },
+     {
+      "step": 102,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+         ],
+         "status": "partly_fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "model_version rollback to v2.3 cleared nothing at step 70."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas fail retrieval and fact canaries with confident wrong specifics.",
+          "WARN vectordb: segment 7 checksum mismatch; serving cached segment at step 68.",
+          "Template and model_version rollbacks cleared nothing, pointing at shared vectordb.",
+          "Rebuild completed at step 93 but symptoms persist."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "failover_vectordb",
+         "args": {},
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "Rebuild of primary index did not clear wrong answers; failover to standby vectordb to test if standby has uncorrupted index."
+        }
+       ],
+       "summary": "Rebuilding the primary index did not fix wrong answers across all replicas; failing over to the standby vector database to see if it serves correct results."
+      }
+     },
+     {
+      "step": 114,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+         ],
+         "status": "partly_fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "model_version rollback to v2.3 cleared nothing at step 70."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas fail retrieval and fact canaries with confident wrong specifics.",
+          "WARN vectordb: segment 7 checksum mismatch; serving cached segment at step 68.",
+          "Template and model_version rollbacks cleared nothing, pointing at shared vectordb.",
+          "Rebuild completed at step 93 but symptoms persist.",
+          "Failover to standby vectordb cleared nothing."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 has template chat-tpl-13 (set at step 53) while others have chat-tpl-12.",
+          "replica-4 fails Arabic fact 5/6, Arabic retrieval 4/6, English fact 6/6.",
+          "replica-3 (same tokenizer, same model_version) has only English issues, not Arabic.",
+          "replica-4's Arabic errors differ from replica-1/2/3 patterns."
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-1, replica-2, replica-3 have template chat-tpl-12.",
+          "replica-1 fails Arabic fact 4/6, Arabic retrieval 5/6, English retrieval 5/6.",
+          "replica-2 fails Arabic fact 5/6, Arabic retrieval 4/6, English fact 4/6, English retrieval 5/6.",
+          "replica-3 fails English fact 5/6, English retrieval 4/6; Arabic fine.",
+          "All three share template chat-tpl-12; replica-4 has different template and different error pattern.",
+          "Template rollback at step 50 was to chat-tpl-11, which cleared nothing, but that was before the current template was set."
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H5",
+         "purpose": "fix",
+         "why": "replica-4 has template chat-tpl-13 (set at step 53) while others have chat-tpl-12; its Arabic errors differ from others, suggesting template mismatch."
+        },
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H6",
+         "purpose": "fix",
+         "why": "replica-1/2/3 share template chat-tpl-12 and have Arabic/English errors; previous rollback to chat-tpl-11 was before current template was set, so try rolling back to the previous value (chat-tpl-11) again."
+        }
+       ],
+       "summary": "Rolling back template on replica-4 to chat-tpl-12 and on replica-1/2/3 to chat-tpl-11 to test if template settings are causing wrong answers."
+      }
+     },
+     {
+      "step": 126,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "model_version rollback to v2.3 cleared nothing at step 70."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All four replicas fail retrieval and fact canaries with confident wrong specifics.",
+          "WARN vectordb: segment 7 checksum mismatch; serving cached segment at step 68.",
+          "Template and model_version rollbacks cleared nothing, pointing at shared vectordb.",
+          "Rebuild completed at step 93 but symptoms persist.",
+          "Failover to standby vectordb cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "replica-4 has template chat-tpl-13 (set at step 53) while others have chat-tpl-12.",
+          "replica-4 fails Arabic fact 5/6, Arabic retrieval 4/6, English fact 6/6.",
+          "replica-3 (same tokenizer, same model_version) has only English issues, not Arabic.",
+          "replica-4's Arabic errors differ from replica-1/2/3 patterns."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "replica-1, replica-2, replica-3 have template chat-tpl-12.",
+          "replica-1 fails Arabic fact 4/6, Arabic retrieval 5/6, English retrieval 5/6.",
+          "replica-2 fails Arabic fact 5/6, Arabic retrieval 4/6, English fact 4/6, English retrieval 5/6.",
+          "replica-3 fails English fact 5/6, English retrieval 4/6; Arabic fine.",
+          "All three share template chat-tpl-12; replica-4 has different template and different error pattern.",
+          "Template rollback at step 50 was to chat-tpl-11, which cleared nothing, but that was before the current template was set."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H7",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas have server_build=serve-1.7.2, which was set before the incident (not in change log).",
+          "All other settings (model_version, template, tokenizer, quantization) have been rolled back or are identical across replicas, yet symptoms persist.",
+          "The only common factor left is server_build=serve-1.7.2, which may have a bug affecting both Arabic and English fact/retrieval answers.",
+          "The vector database was ruled out because failover and rebuild did not help."
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-1",
+          "contains": "serve-1.7.2"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Check if there are any error logs related to server_build=serve-1.7.2 that could explain wrong answers."
+        }
+       ],
+       "summary": "All previous hypotheses (tokenizer, template, model_version, vectordb) have been ruled out; now suspecting server_build=serve-1.7.2 as the common factor causing wrong answers across all replicas."
+      }
+     },
+     {
+      "step": 126,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "model_version rollback to v2.3 cleared nothing at step 70."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All four replicas fail retrieval and fact canaries with confident wrong specifics.",
+          "WARN vectordb: segment 7 checksum mismatch; serving cached segment at step 68.",
+          "Template and model_version rollbacks cleared nothing, pointing at shared vectordb.",
+          "Rebuild completed at step 93 but symptoms persist.",
+          "Failover to standby vectordb cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "replica-4 has template chat-tpl-13 (set at step 53) while others have chat-tpl-12.",
+          "replica-4 fails Arabic fact 5/6, Arabic retrieval 4/6, English fact 6/6.",
+          "replica-3 (same tokenizer, same model_version) has only English issues, not Arabic.",
+          "replica-4's Arabic errors differ from replica-1/2/3 patterns."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "replica-1, replica-2, replica-3 have template chat-tpl-12.",
+          "replica-1 fails Arabic fact 4/6, Arabic retrieval 5/6, English retrieval 5/6.",
+          "replica-2 fails Arabic fact 5/6, Arabic retrieval 4/6, English fact 4/6, English retrieval 5/6.",
+          "replica-3 fails English fact 5/6, English retrieval 4/6; Arabic fine.",
+          "All three share template chat-tpl-12; replica-4 has different template and different error pattern.",
+          "Template rollback at step 50 was to chat-tpl-11, which cleared nothing, but that was before the current template was set."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H7",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas have server_build=serve-1.7.2, which was set before the incident (not in change log).",
+          "All other settings (model_version, template, tokenizer, quantization) have been rolled back or are identical across replicas, yet symptoms persist.",
+          "The only common factor left is server_build=serve-1.7.2, which may have a bug affecting both Arabic and English fact/retrieval answers.",
+          "The vector database was ruled out because failover and rebuild did not help."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H7",
+         "purpose": "fix",
+         "why": "All other common settings have been ruled out; server_build is the only remaining shared factor that could cause wrong answers across all replicas."
+        }
+       ],
+       "summary": "Rolling back server_build to previous version on all replicas to test if it resolves the wrong answers."
+      }
+     },
+     {
+      "step": 138,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.05
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "model_version rollback to v2.3 cleared nothing at step 70."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.05
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild and failover both cleared nothing; checksum WARN and rebuild-complete are logged."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "replica-4 template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.05
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.05
+        },
+        {
+         "id": "H7",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "server_build rollback to serve-1.7.1 cleared nothing at step 134, then undone."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        },
+        {
+         "id": "H8",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas still give confident wrong facts (makkah/jeddah for Riyadh) with identical settings after every config/model/template/tokenizer/vectordb fix was tried.",
+          "Errors span Arabic and English, fact and retrieval, on all four nodes with no config difference left.",
+          "No restart of any replica has been attempted since symptoms began."
+         ],
+         "status": "suspected",
+         "confidence": 0.45
+        },
+        {
+         "id": "H9",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "identity-service is external and owned by another team; not instrumented in logs.",
+          "Wrong confident answers on all replicas across languages could come from upstream prompt/context corruption."
+         ],
+         "status": "suspected",
+         "confidence": 0.2
+        },
+        {
+         "id": "H10",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "quantization=fp8 identical on all replicas; not in change log, but fp8 is the only remaining shared setting never tested."
+         ],
+         "status": "suspected",
+         "confidence": 0.25
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-1"
+         },
+         "hypothesis": "H8",
+         "purpose": "investigate",
+         "why": "Check GPU node health (ECC/temp) on a node serving wrong answers"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "identity-service",
+          "contains": "error"
+         },
+         "hypothesis": "H9",
+         "purpose": "investigate",
+         "why": "Look for upstream prompt corruption from identity-service"
+        }
+       ],
+       "summary": "Every config/model/template/tokenizer/vectordb fix has failed; all four replicas still answer confidently wrong, so I'm checking GPU node health and the external identity-service before deciding on restarts."
+      }
+     },
+     {
+      "step": 138,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "model_version rollback to v2.3 cleared nothing at step 70."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Rebuild and failover both cleared nothing; checksum WARN and rebuild-complete are logged."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.85
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Template rollback cleared nothing."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H7",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "server_build rollback to serve-1.7.1 cleared nothing at step 134, then undone."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H8",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas give confident wrong facts (makkah/jeddah for Riyadh) with identical settings after every config/model/template/tokenizer/vectordb fix was tried.",
+          "No restart attempted since symptoms began; four independent nodes failing identically is unlikely for silent corruption but restart is the remaining safe test."
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H9",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "identity-service is external and owned by another team; not instrumented in logs.",
+          "Wrong confident answers on all replicas across languages could come from upstream prompt/context corruption."
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H10",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "quantization=fp8 identical on all replicas; not in change log, but fp8 is the only remaining shared setting never tested."
+         ],
+         "status": "suspected",
+         "confidence": 0.35
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "quantization",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H10",
+         "purpose": "experiment",
+         "why": "Only untested shared setting; test whether fp8 quantization is producing the wrong facts."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity-service",
+          "summary": "All four model replicas give confident wrong factual answers (e.g. Makkah/Jeddah for Riyadh) across Arabic and English, fact and retrieval, after every model/template/tokenizer/server_build/vectordb fix was tried. Suspect upstream prompt/context corruption in identity-service; please verify what context is being passed to the queue."
+         },
+         "hypothesis": "H9",
+         "purpose": "escalate",
+         "why": "External service not instrumented; needs owner to check upstream context."
+        }
+       ],
+       "summary": "Testing the last untested shared setting (quantization) while escalating identity-service as a possible upstream context-corruption source."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 138,
+      "team": "identity-service",
+      "summary": "All four model replicas give confident wrong factual answers (e.g. Makkah/Jeddah for Riyadh) across Arabic and English, fact and retrieval, after every model/template/tokenizer/server_build/vectordb fix was tried. Suspect upstream prompt/context corruption in identity-service; please verify what context is being passed to the queue.",
+      "hypothesis": "H9",
+      "automatic": false
+     }
+    ],
+    "changes": 9,
+    "approvals": 1,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 4 symptoms open"
+   }
+  ],
+  "cost": 0.03715005939999999,
+  "calls": 121,
+  "tokens_in": 282754,
+  "tokens_out": 70102
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_tokenizer",
+   "step": 37,
+   "target": [
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-2, replica-3",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "index_corruption",
+   "step": 45,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f4",
+   "kind": "bad_template",
+   "step": 53,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "template chat-tpl-13 deployed to replica-4",
+   "fix": "rollback:template",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f5",
+   "kind": "bad_model",
+   "step": 57,
+   "target": [],
+   "cause": "model_version allam-34b-v2.4-rc deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:model_version",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 50,
+   "time": "2026-10-30T09:08:20",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-11",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 53,
+   "time": "2026-10-30T09:08:50",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-11",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "chat template refresh"
+  },
+  {
+   "step": 57,
+   "time": "2026-10-30T09:09:30",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.4-rc",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "ALLaM 2.4 release candidate"
+  },
+  {
+   "step": 62,
+   "time": "2026-10-30T09:10:20",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.4-rc",
+   "new": "allam-34b-v2.3",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 114,
+   "time": "2026-10-30T09:19:00",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 114,
+   "time": "2026-10-30T09:19:00",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-11",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 126,
+   "time": "2026-10-30T09:21:00",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.7.1",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 138,
+   "time": "2026-10-30T09:23:00",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "fp8",
+   "new": "bf16",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

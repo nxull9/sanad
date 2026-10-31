@@ -1,0 +1,1301 @@
+{
+ "score": {
+  "scenario": "h16",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "worker_deadlock",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 2,
+  "approvals": 0,
+  "model_calls": 12,
+  "strong_calls": 11,
+  "cost": 0.00276,
+  "tokens_in": 128362,
+  "tokens_out": 29931,
+  "escalations": [
+   {
+    "step": 54,
+    "team": "identity",
+    "summary": "Workers stalled on dispatch_mutex, likely due to identity-service not returning responses. Queue backlog and drops, gateway errors. Please investigate identity-service health and throughput.",
+    "hypothesis": "H2",
+    "automatic": false
+   },
+   {
+    "step": 74,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4, stalled:workers. Ledger: H1 overload  on ['gateway', 'workers', 'replica-1', 'replica-2', 'replica-3', 'replica-4'] [not_fixed]; H2 external_dependency  on ['workers'] [escalated]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "incoming traffic: 224 req/s (1.83x normal)",
+       "backlog:queue: 5042 requests waiting",
+       "all replicas show high p95 latency",
+       "scale_out twice did not clear symptoms"
+      ],
+      "confidence": 0.3,
+      "attempts": 2,
+      "history": [
+       "step 38 scale_out -> not_fixed",
+       "step 56 scale_out -> not_fixed"
+      ],
+      "status": "not_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "external_dependency",
+      "component": [
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "stalled:workers",
+       "drops:queue",
+       "errors:gateway"
+      ],
+      "evidence": [
+       "workers dispatching 0 req/s (normal 181)",
+       "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+       "queue full: dropped 6705 requests in the last 3 steps",
+       "gateway error rate 100.0% (p95 latency 62702 ms)",
+       "identity-service is external and upstream of queue"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is 1.77x normal causing queue backlog and high latency across all replicas; adding capacity will reduce load per replica and clear the queue.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 48,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "removed ['replica-5', 'replica-6']"
+     },
+     {
+      "step": 54,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "Workers stalled on dispatch_mutex, likely due to identity-service not returning responses. Queue backlog and drops, gateway errors. Please investigate identity-service health and throughput."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Workers are stuck waiting on dispatch_mutex, which is likely caused by identity-service not releasing tasks. This is an external dependency not under our control.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "handed to identity"
+     },
+     {
+      "step": 56,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Overload persists; adding capacity on spare nodes to reduce backlog and latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 66,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "removed ['replica-5', 'replica-6']"
+     },
+     {
+      "step": 70,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "Workers are stalled waiting on dispatch_mutex, likely because identity-service is not responding. This causes queue backlog, drops, and gateway errors. Please investigate identity-service health."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Workers are stuck waiting on dispatch_mutex, and identity-service is external and upstream. This is not fixable by us.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "H2 was already handed to people"
+     },
+     {
+      "step": 72,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "Workers stalled at 0 dispatch rps waiting on dispatch_mutex; queue backlog and drops; gateway timeouts. Identity-service upstream likely blocking. Please investigate and restore service."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Workers are blocked on an external dependency (identity-service) that is not ours to fix; escalation is the appropriate action.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "H2 was already handed to people"
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 216 req/s (1.77x normal)",
+          "backlog:queue: 1069 requests waiting",
+          "all replicas show high p95 latency",
+          "no config changes or crashes detected"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is 1.77x normal causing queue backlog and high latency across all replicas; adding capacity will reduce load per replica and clear the queue."
+        }
+       ],
+       "summary": "The system is experiencing overload due to a 1.77x increase in incoming traffic, causing queue backlog and high latency on all replicas; scaling out by 2 replicas is required to restore normal performance."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 217 req/s (1.78x normal)",
+          "backlog:queue: 4904 requests waiting",
+          "all replicas show high p95 latency",
+          "no config changes or crashes detected"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 4329 requests in the last 2 steps",
+          "gateway error rate 100.0% (p95 latency 63560 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers stalled with dispatch_mutex wait; need to see if identity-service is causing a deadlock or timeout that blocks the dispatcher."
+        }
+       ],
+       "summary": "Workers stalled (0 req/s) and queue dropping requests; suspect identity-service deadlock blocking dispatch, not just overload."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 217 req/s (1.78x normal)",
+          "backlog:queue: 4904 requests waiting",
+          "all replicas show high p95 latency",
+          "no config changes or crashes detected"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 4329 requests in the last 2 steps",
+          "gateway error rate 100.0% (p95 latency 63560 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "identity-service",
+          "contains": "error"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers are stalled waiting on dispatch_mutex; need to check if identity-service is failing or slow upstream, causing queue to back up and workers to block."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "queue",
+          "contains": "dispatch"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check queue dispatch metrics to see if workers are blocked on a mutex due to upstream dependency or internal deadlock."
+        }
+       ],
+       "summary": "Workers are stalled on dispatch_mutex with zero dispatch rate, suggesting an external dependency (identity-service) is blocking the pipeline; investigating identity-service logs and queue metrics before escalating."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 217 req/s (1.78x normal)",
+          "backlog:queue: 4904 requests waiting",
+          "all replicas show high p95 latency",
+          "no config changes or crashes detected"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 4329 requests in the last 2 steps",
+          "gateway error rate 100.0% (p95 latency 63560 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers are stalled waiting on dispatch_mutex; need to see if there is a deadlock or external dependency blocking them."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check worker dispatch metrics to understand if the stall is due to internal deadlock or upstream blocking."
+        }
+       ],
+       "summary": "Workers are stalled on dispatch_mutex causing queue backlog and drops; investigating whether this is an external dependency issue or a worker deadlock before escalating."
+      }
+     },
+     {
+      "step": 54,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 220 req/s (1.80x normal)",
+          "backlog:queue: 4987 requests waiting",
+          "all replicas show high p95 latency",
+          "no config changes or crashes detected"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 6586 requests in the last 3 steps",
+          "gateway error rate 100.0% (p95 latency 62984 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are stuck on dispatch_mutex due to upstream identity-service issue"
+        }
+       ],
+       "summary": "Workers stalled at 0 req/s with dispatch_mutex warning, queue backlog and drops, gateway errors; likely identity-service issue upstream, investigating further."
+      }
+     },
+     {
+      "step": 54,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 220 req/s (1.80x normal)",
+          "backlog:queue: 4987 requests waiting",
+          "all replicas show high p95 latency",
+          "no config changes or crashes detected"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 6586 requests in the last 3 steps",
+          "gateway error rate 100.0% (p95 latency 62984 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "Workers stalled on dispatch_mutex, likely due to identity-service not returning responses. Queue backlog and drops, gateway errors. Please investigate identity-service health and throughput."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Workers are stuck waiting on dispatch_mutex, which is likely caused by identity-service not releasing tasks. This is an external dependency not under our control."
+        }
+       ],
+       "summary": "Workers stalled on dispatch_mutex, likely due to identity-service not returning responses; escalated to identity team."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 217 req/s (1.77x normal)",
+          "backlog:queue: 4871 requests waiting",
+          "all replicas show high p95 latency",
+          "no config changes or crashes detected"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 6525 requests in the last 3 steps",
+          "gateway error rate 100.0% (p95 latency 64375 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Overload persists; adding capacity on spare nodes to reduce backlog and latency."
+        }
+       ],
+       "summary": "Overload continues despite earlier scale_out; adding two more replicas to absorb traffic while identity team investigates stalled workers."
+      }
+     },
+     {
+      "step": 70,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 225 req/s (1.84x normal)",
+          "backlog:queue: 5025 requests waiting",
+          "all replicas show high p95 latency",
+          "scale_out twice did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers stalled on dispatch_mutex; need to see if it is a deadlock or external dependency blocking."
+        }
+       ],
+       "summary": "Re-evaluating whether the worker stall is a deadlock rather than purely external, since scale_out did not help and the dispatcher mutex persists."
+      }
+     },
+     {
+      "step": 70,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 225 req/s (1.84x normal)",
+          "backlog:queue: 5025 requests waiting",
+          "all replicas show high p95 latency",
+          "scale_out twice did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 4542 requests in the last 2 steps",
+          "gateway error rate 100.0% (p95 latency 63747 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "Workers are stalled waiting on dispatch_mutex, likely because identity-service is not responding. This causes queue backlog, drops, and gateway errors. Please investigate identity-service health."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Workers are stuck waiting on dispatch_mutex, and identity-service is external and upstream. This is not fixable by us."
+        }
+       ],
+       "summary": "Escalating to identity team: workers stalled on dispatch_mutex, likely due to identity-service issue causing queue backlog and gateway errors."
+      }
+     },
+     {
+      "step": 72,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 224 req/s (1.83x normal)",
+          "backlog:queue: 5042 requests waiting",
+          "all replicas show high p95 latency",
+          "scale_out twice did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 6705 requests in the last 3 steps",
+          "gateway error rate 100.0% (p95 latency 62702 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if the dispatch_mutex wait is due to identity-service timeout or a deadlock within workers."
+        }
+       ],
+       "summary": "Workers stalled on dispatch_mutex, likely due to identity-service issues; overload hypothesis remains but secondary; investigating worker logs for mutex details."
+      }
+     },
+     {
+      "step": 72,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 224 req/s (1.83x normal)",
+          "backlog:queue: 5042 requests waiting",
+          "all replicas show high p95 latency",
+          "scale_out twice did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers are stalled on dispatch_mutex; need to see if it's a deadlock or external dependency issue."
+        }
+       ],
+       "summary": "Workers are stalled on dispatch_mutex causing queue backlog and gateway errors; investigating whether this is a deadlock or external dependency before escalating further."
+      }
+     },
+     {
+      "step": 72,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic: 224 req/s (1.83x normal)",
+          "backlog:queue: 5042 requests waiting",
+          "all replicas show high p95 latency",
+          "scale_out twice did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "stalled:workers",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s (normal 181)",
+          "WARN workers: dispatcher: 0 tasks dispatched in last 10s; waiting on dispatch_mutex",
+          "queue full: dropped 6705 requests in the last 3 steps",
+          "gateway error rate 100.0% (p95 latency 62702 ms)",
+          "identity-service is external and upstream of queue"
+         ],
+         "status": "escalated",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "Workers stalled at 0 dispatch rps waiting on dispatch_mutex; queue backlog and drops; gateway timeouts. Identity-service upstream likely blocking. Please investigate and restore service."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Workers are blocked on an external dependency (identity-service) that is not ours to fix; escalation is the appropriate action."
+        }
+       ],
+       "summary": "Workers are stalled on an external identity-service dependency causing queue backlog and gateway errors; escalated to identity team while overload hypothesis remains low confidence."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 54,
+      "team": "identity",
+      "summary": "Workers stalled on dispatch_mutex, likely due to identity-service not returning responses. Queue backlog and drops, gateway errors. Please investigate identity-service health and throughput.",
+      "hypothesis": "H2",
+      "automatic": false
+     },
+     {
+      "step": 74,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4, stalled:workers. Ledger: H1 overload  on ['gateway', 'workers', 'replica-1', 'replica-2', 'replica-3', 'replica-4'] [not_fixed]; H2 external_dependency  on ['workers'] [escalated]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 9 symptoms open"
+   }
+  ],
+  "cost": 0.015845526999999998,
+  "calls": 59,
+  "tokens_in": 128362,
+  "tokens_out": 29931
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "traffic_spike",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "worker_deadlock",
+   "step": 39,
+   "target": [
+    "workers"
+   ],
+   "cause": "worker dispatcher deadlocked on dispatch_mutex",
+   "fix": "restart:workers",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

@@ -1,0 +1,179 @@
+{
+ "score": {
+  "scenario": "h09",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 40,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-1"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 0.00022,
+  "tokens_in": 8632,
+  "tokens_out": 1405,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "ecc:gpu-1",
+     "wrong_answers:replica-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "gpu-1"
+      ],
+      "setting": null,
+      "explains": [
+       "ecc:gpu-1",
+       "wrong_answers:replica-1"
+      ],
+      "evidence": [
+       "gpu-1 logged 1 new ECC error in last 10 steps",
+       "Xid 94: contained ECC error on gpu-1 at step 36",
+       "replica-1 (on gpu-1) gives wrong answers on Arabic and English math/retrieval canaries; other replicas on healthy GPUs are not reported as failing"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 40 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "gpu-1 has ECC errors causing silent corruption on replica-1; drain moves replica-1 to a spare node and takes gpu-1 out of service to stop further corruption",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "ecc:gpu-1",
+        "wrong_answers:replica-1"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-1",
+       "wrong_answers:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "ecc:gpu-1",
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "gpu-1 logged 1 new ECC error in last 10 steps",
+          "Xid 94: contained ECC error on gpu-1 at step 36",
+          "replica-1 (on gpu-1) gives wrong answers on Arabic and English math/retrieval canaries; other replicas on healthy GPUs are not reported as failing"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "gpu-1 has ECC errors causing silent corruption on replica-1; drain moves replica-1 to a spare node and takes gpu-1 out of service to stop further corruption"
+        }
+       ],
+       "summary": "Drain gpu-1 due to ECC errors causing silent corruption on replica-1, moving it to a spare node."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 52,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0008617274,
+  "calls": 5,
+  "tokens_in": 8632,
+  "tokens_out": 1405
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "gpu_corruption",
+   "step": 36,
+   "target": [
+    "gpu-1"
+   ],
+   "cause": "gpu-1 silent data corruption",
+   "fix": "drain:gpu-1",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  }
+ ],
+ "changes": []
+}

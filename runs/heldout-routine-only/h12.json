@@ -1,0 +1,1476 @@
+{
+ "score": {
+  "scenario": "h12",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 320,
+  "causes": [
+   {
+    "fault": "rack_power",
+    "target": [
+     "rack-b"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 1,
+  "model_calls": 12,
+  "strong_calls": 0,
+  "cost": 0.001628,
+  "tokens_in": 37680,
+  "tokens_out": 8363,
+  "escalations": [
+   {
+    "step": 40,
+    "team": "infrastructure-hardware",
+    "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately.",
+    "hypothesis": null,
+    "automatic": false
+   },
+   {
+    "step": 46,
+    "team": "infrastructure-hardware",
+    "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately.",
+    "hypothesis": "H1",
+    "automatic": false
+   },
+   {
+    "step": 192,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, down:replica-4, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, unreachable:gpu-4, unreachable:gpu-5, unreachable:gpu-6. Ledger: H1 power_failure  on ['gpu-4', 'gpu-5', 'gpu-6'] [escalated]; H2 index_corruption  on ['vectordb'] [fixed]; H3 overload  on ['gateway', 'workers', 'replica-1', 'replica-2', 'replica-3'] [not_fixed]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "down:replica-4",
+     "unreachable:gpu-4",
+     "unreachable:gpu-5",
+     "unreachable:gpu-6"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "power_failure",
+      "component": [
+       "gpu-4",
+       "gpu-5",
+       "gpu-6"
+      ],
+      "setting": null,
+      "explains": [
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "down:replica-4"
+      ],
+      "evidence": [
+       "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+       "All affected nodes are in rack-b",
+       "Nodes send no telemetry (temp/clock 0)"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "Rebuild completed at step 65"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 46 rebuild_index -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "backlog:queue"
+      ],
+      "evidence": [
+       "Incoming traffic is 1.11x normal",
+       "Loss of replica-4 reduces total capacity by ~20%",
+       "Remaining replicas show elevated p95 latency consistent with higher load per node",
+       "Queue backlog indicates processing bottleneck due to reduced capacity",
+       "No spare GPU nodes available to scale out"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 176 set_weight -> not_fixed"
+      ],
+      "status": "not_fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-4"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Move replica-4 off the failed node to spare capacity to restore service.",
+      "ran": false,
+      "risk": "medium",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "no spare GPU node to move to"
+     },
+     {
+      "step": 40,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure-hardware",
+       "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately."
+      },
+      "hypothesis": null,
+      "purpose": null,
+      "why": null,
+      "ran": true,
+      "risk": "none",
+      "result": "handed to infrastructure-hardware"
+     },
+     {
+      "step": 46,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Vector DB index corruption is causing wrong answers across all healthy replicas; rebuilding will restore correct retrieval.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 74,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 46,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure-hardware",
+       "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Power failure is a hardware issue requiring physical intervention; already escalated but confirming status.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "handed to infrastructure-hardware"
+     },
+     {
+      "step": 154,
+      "action": "scale_out",
+      "args": {
+       "count": 1
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Restore lost capacity from replica-4 down to handle current traffic load and reduce latency on remaining healthy replicas.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 164,
+      "action": "scale_out",
+      "args": {
+       "count": 1
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Restore lost capacity from the power failure to reduce queue backlog and latency on remaining healthy replicas.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 174,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Restore capacity lost by the power failure on rack-b to reduce queue backlog and latency on remaining healthy replicas.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 176,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 0
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Replica-4 is down and unreachable; setting weight to 0 prevents the gateway from sending requests to a dead endpoint, reducing errors and allowing the scheduler to focus on healthy replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "replica-4 traffic weight 1.0 -> 0",
+      "verified": {
+       "step": 184,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3"
+       ]
+      },
+      "undone": "replica-4 traffic weight 0 -> 1.0"
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-4"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Move replica-4 off the failed node to spare capacity to restore service."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure-hardware",
+          "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately."
+         }
+        },
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Wait for drain operation to complete and verify if replica-4 restarts successfully on a spare node."
+        }
+       ],
+       "summary": "Identified a power failure in rack-b affecting three GPU nodes; draining the down replica and escalating to hardware team while waiting for failover to spare capacity."
+      }
+     },
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Hardware team has been escalated; waiting for physical repair or failover of power infrastructure. No software action can fix hardware power loss."
+        }
+       ],
+       "summary": "Rack-b power failure confirmed and escalated to infrastructure-hardware; replicas on affected GPUs are down and cannot be recovered via software actions until hardware is repaired."
+      }
+     },
+     {
+      "step": 46,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "suspected",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "WARN vectordb: segment 7 checksum mismatch; serving cached segment",
+          "All healthy replicas (1, 2, 3) share the same vector database and answer wrongly with similar retrieval errors"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Vector DB index corruption is causing wrong answers across all healthy replicas; rebuilding will restore correct retrieval."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure-hardware",
+          "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Power failure is a hardware issue requiring physical intervention; already escalated but confirming status."
+        }
+       ],
+       "summary": "Escalated power failure for rack-b nodes and initiated vector index rebuild to fix widespread wrong answers caused by index corruption."
+      }
+     },
+     {
+      "step": 154,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "WARN vectordb: segment 7 checksum mismatch; serving cached segment",
+          "Rebuild completed at step 65"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.17x normal",
+          "Loss of replica-4 reduces total capacity by ~20% (1 out of 5 replicas)",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 1
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Restore lost capacity from replica-4 down to handle current traffic load and reduce latency on remaining healthy replicas."
+        }
+       ],
+       "summary": "Escalated power failure for rack-b nodes; scaling out by 1 replica to mitigate latency caused by reduced capacity and slightly elevated traffic."
+      }
+     },
+     {
+      "step": 156,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.15x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "No spare GPU nodes available for scale_out; waiting for hardware team to restore rack-b or provide new nodes."
+        }
+       ],
+       "summary": "Power failure on rack-b has taken down 3 GPUs and 1 replica, causing overload on the remaining 3 replicas which explains the latency and queue backlog; no immediate fix possible without hardware restoration or new nodes."
+      }
+     },
+     {
+      "step": 160,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.11x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "No spare GPU nodes available to scale out; waiting for potential autoscaler action or manual intervention."
+        }
+       ],
+       "summary": "Power failure on rack-b has taken down 3 GPUs and 1 replica, causing overload on the remaining 3 replicas which cannot be scaled out due to lack of spare capacity."
+      }
+     },
+     {
+      "step": 164,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 1
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Restore lost capacity from the power failure to reduce queue backlog and latency on remaining healthy replicas."
+        }
+       ],
+       "summary": "Escalated power failure on rack-b; scaling out by 1 replica to mitigate overload caused by loss of replica-4."
+      }
+     },
+     {
+      "step": 166,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.14x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "No spare GPU nodes available for scale_out; waiting for hardware team to restore rack-b or provide replacement nodes."
+        }
+       ],
+       "summary": "Hardware failure in rack-b has taken down 3 GPUs and 1 replica, causing overload on the remaining 3 replicas; unable to scale out due to lack of spare capacity, awaiting hardware resolution."
+      }
+     },
+     {
+      "step": 170,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.17x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "No spare GPU nodes available to scale out; waiting for potential recovery or manual intervention for rack-b power issue."
+        }
+       ],
+       "summary": "Power failure on rack-b has taken down 3 GPUs and 1 replica, causing overload on remaining replicas; unable to scale out due to lack of spare capacity."
+      }
+     },
+     {
+      "step": 174,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.17x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Restore capacity lost by the power failure on rack-b to reduce queue backlog and latency on remaining healthy replicas."
+        }
+       ],
+       "summary": "Escalate power failure to hardware team and scale out by 2 replicas to mitigate overload caused by loss of capacity from rack-b nodes."
+      }
+     },
+     {
+      "step": 176,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.09x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity",
+          "No spare GPU nodes available to scale out"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 0
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Replica-4 is down and unreachable; setting weight to 0 prevents the gateway from sending requests to a dead endpoint, reducing errors and allowing the scheduler to focus on healthy replicas."
+        }
+       ],
+       "summary": "Set weight of down replica-4 to 0 to stop routing traffic to it; H1 remains escalated for hardware failure, H3 persists as overload due to lost capacity and no spare nodes."
+      }
+     },
+     {
+      "step": 188,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6",
+          "down:replica-4"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected nodes are in rack-b",
+          "Nodes send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "Rebuild completed at step 65"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "Incoming traffic is 1.11x normal",
+          "Loss of replica-4 reduces total capacity by ~20%",
+          "Remaining replicas show elevated p95 latency consistent with higher load per node",
+          "Queue backlog indicates processing bottleneck due to reduced capacity",
+          "No spare GPU nodes available to scale out"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Overload persists because H1 caused loss of capacity (replica-4) and no spares exist to scale out. Waiting to see if traffic subsides or if manual intervention is required."
+        }
+       ],
+       "summary": "Power failure on rack-b (H1) has taken down replica-4 and left no spare nodes, causing overload on remaining replicas (H3); waiting for traffic normalization as scaling is impossible."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 40,
+      "team": "infrastructure-hardware",
+      "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately.",
+      "hypothesis": null,
+      "automatic": false
+     },
+     {
+      "step": 46,
+      "team": "infrastructure-hardware",
+      "summary": "Rack-b power supply unit failure affecting gpu-4, gpu-5, and gpu-6. Nodes are unreachable with zero telemetry. Hardware team needs to replace PSU or repair rack-b power distribution immediately.",
+      "hypothesis": "H1",
+      "automatic": false
+     },
+     {
+      "step": 192,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, down:replica-4, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, unreachable:gpu-4, unreachable:gpu-5, unreachable:gpu-6. Ledger: H1 power_failure  on ['gpu-4', 'gpu-5', 'gpu-6'] [escalated]; H2 index_corruption  on ['vectordb'] [fixed]; H3 overload  on ['gateway', 'workers', 'replica-1', 'replica-2', 'replica-3'] [not_fixed]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 2,
+    "approvals": 1,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 9 symptoms open"
+   }
+  ],
+  "cost": 0.0022803434,
+  "calls": 19,
+  "tokens_in": 37680,
+  "tokens_out": 8363
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "rack_power",
+   "step": 34,
+   "target": [
+    "rack-b"
+   ],
+   "cause": "power supply fault on rack-b",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "data-centre facilities team",
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "index_corruption",
+   "step": 42,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": []
+}

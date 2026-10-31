@@ -1,0 +1,123 @@
+{
+ "score": {
+  "scenario": "h17",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 0,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": [
+   {
+    "step": 80,
+    "team": "on-call engineer",
+    "summary": "still broken",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "opened": 44,
+    "actions": [],
+    "escalations": [
+     {
+      "step": 80,
+      "team": "on-call engineer",
+      "summary": "still broken",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "rounds": 3,
+    "approvals": 0
+   }
+  ],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "traffic_spike",
+   "step": 38,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.6x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_worker_concurrency",
+   "step": 87,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 87,
+   "time": "2026-10-30T09:14:30",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  }
+ ]
+}

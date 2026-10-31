@@ -1,0 +1,179 @@
+{
+ "score": {
+  "scenario": "h09",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 60,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-1"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 9.4e-05,
+  "tokens_in": 13507,
+  "tokens_out": 3404,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "ecc:gpu-1",
+     "wrong_answers:replica-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "gpu-1"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "ecc:gpu-1"
+      ],
+      "evidence": [
+       "replica-1 on gpu-1 is failing canary questions across all categories (Arabic/English, Fact/Math/etc.)",
+       "gpu-1 logged ECC errors (Xid 94) starting step 40",
+       "Other replicas (2-4) are healthy and share the same software config, isolating the issue to the hardware/node of replica-1"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 42 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The node has hardware errors (ECC) causing silent corruption in model outputs. Draining will move the replica to a spare node (gpu-5 or gpu-6), restoring service with a clean GPU.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "ecc:gpu-1",
+        "wrong_answers:replica-1"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-1",
+       "wrong_answers:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "ecc:gpu-1"
+         ],
+         "evidence": [
+          "replica-1 on gpu-1 is failing canary questions across all categories (Arabic/English, Fact/Math/etc.)",
+          "gpu-1 logged ECC errors (Xid 94) starting step 40",
+          "Other replicas (2-4) are healthy and share the same software config, isolating the issue to the hardware/node of replica-1"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The node has hardware errors (ECC) causing silent corruption in model outputs. Draining will move the replica to a spare node (gpu-5 or gpu-6), restoring service with a clean GPU."
+        }
+       ],
+       "summary": "Suspecting GPU hardware failure on gpu-1 causing silent data corruption; draining the node to migrate the affected replica to a healthy spare."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 54,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0013944799999999998,
+  "calls": 7,
+  "tokens_in": 13507,
+  "tokens_out": 3404
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "gpu_corruption",
+   "step": 36,
+   "target": [
+    "gpu-1"
+   ],
+   "cause": "gpu-1 silent data corruption",
+   "fix": "drain:gpu-1",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  }
+ ],
+ "changes": []
+}

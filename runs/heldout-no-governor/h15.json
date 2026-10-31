@@ -1,0 +1,539 @@
+{
+ "score": {
+  "scenario": "h15",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": 120,
+  "causes": [
+   {
+    "fault": "memory_leak",
+    "target": [
+     "replica-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [
+     "replica-2"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.000528,
+  "tokens_in": 104748,
+  "tokens_out": 26276,
+  "escalations": [
+   {
+    "step": 50,
+    "team": "identity-team",
+    "summary": "Gateway error rate is 5.9% (normal 0.08%). Gateway depends on identity-service. Suspect external dependency failure or degradation. Please investigate identity-service health and logs.",
+    "hypothesis": "H3",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "errors:gateway",
+     "memory:replica-4",
+     "restarting:replica-2"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [
+       "restarting:replica-2"
+      ],
+      "evidence": [
+       "replica-2 memory_limit_gb set to 40 at step 39",
+       "log: OOMKilled while loading weights: limit 40GB, need 68GB",
+       "replica-2 restarted 1 time in last 12 steps"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_release",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-4"
+      ],
+      "evidence": [
+       "replica-4 server_build upgraded to serve-1.8.0 at step 38",
+       "replica-4 memory at 76% and rising 1.5 points per step",
+       "other replicas on serve-1.7.2 have stable memory near 55%"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 50 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "external_dependency",
+      "component": [
+       "gateway"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "gateway error rate 5.9% (normal 0.08%)",
+       "gateway depends on identity-service (external team)"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-2"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "replica-2 OOM due to memory_limit_gb=40; rollback to 80 to stop restarts",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-2"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-2']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "restarting:replica-2"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 50,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Roll back replica-4 to the known good build serve-1.7.2 to stop the memory leak associated with serve-1.8.0.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-4']",
+      "verified": {
+       "step": 58,
+       "cleared": [
+        "memory:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 50,
+      "action": "escalate",
+      "args": {
+       "team": "identity-team",
+       "summary": "Gateway error rate is 5.9% (normal 0.08%). Gateway depends on identity-service. Suspect external dependency failure or degradation. Please investigate identity-service health and logs."
+      },
+      "hypothesis": "H3",
+      "purpose": "escalate",
+      "why": "The gateway errors are likely caused by the external identity-service, which is outside my scope to fix directly.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "gateway"
+       ]
+      },
+      "result": "handed to identity-team"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway",
+       "memory:replica-4",
+       "restarting:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-2"
+         ],
+         "evidence": [
+          "replica-2 memory_limit_gb set to 40 at step 39",
+          "log: OOMKilled while loading weights: limit 40GB, need 68GB",
+          "replica-2 restarted 1 time in last 12 steps"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "replica-4 server_build upgraded to serve-1.8.0 at step 38",
+          "replica-4 memory at 61% and rising 1.4 points per step",
+          "other replicas on serve-1.7.2 have stable memory near 55%"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "gateway"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gateway error rate 5.9% (normal 0.08%)",
+          "gateway log_level changed to debug at step 37 (cosmetic, not cause)",
+          "gateway depends on identity-service (external team)"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-2"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "replica-2 OOM due to memory_limit_gb=40; rollback to 80 to stop restarts"
+        },
+        {
+         "action": "inspect",
+         "what": "logs",
+         "component": "replica-4",
+         "contains": "error|warn|OOM|segfault"
+        },
+        {
+         "action": "inspect",
+         "what": "canaries",
+         "component": "gateway",
+         "contains": "timeout|error"
+        }
+       ],
+       "summary": "Rolling back replica-2 memory limit to fix OOM restarts, investigating replica-4 memory leak from new server build, and checking gateway errors possibly from identity-service."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-2"
+         ],
+         "evidence": [
+          "replica-2 memory_limit_gb set to 40 at step 39",
+          "log: OOMKilled while loading weights: limit 40GB, need 68GB",
+          "replica-2 restarted 1 time in last 12 steps"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "replica-4 server_build upgraded to serve-1.8.0 at step 38",
+          "replica-4 memory at 76% and rising 1.5 points per step",
+          "other replicas on serve-1.7.2 have stable memory near 55%"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "gateway"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gateway error rate 5.9% (normal 0.08%)",
+          "gateway depends on identity-service (external team)"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Roll back replica-4 to the known good build serve-1.7.2 to stop the memory leak associated with serve-1.8.0."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity-team",
+          "summary": "Gateway error rate is 5.9% (normal 0.08%). Gateway depends on identity-service. Suspect external dependency failure or degradation. Please investigate identity-service health and logs."
+         },
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "The gateway errors are likely caused by the external identity-service, which is outside my scope to fix directly."
+        }
+       ],
+       "summary": "Rolled back replica-4's server build to fix the memory leak and escalated the gateway errors to the identity team as an external dependency issue."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 50,
+      "team": "identity-team",
+      "summary": "Gateway error rate is 5.9% (normal 0.08%). Gateway depends on identity-service. Suspect external dependency failure or degradation. Please investigate identity-service health and logs.",
+      "hypothesis": "H3",
+      "automatic": false
+     }
+    ],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 60,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.015128615000000002,
+  "calls": 47,
+  "tokens_in": 104748,
+  "tokens_out": 26276
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 37,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "memory_leak",
+   "step": 38,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "server_build serve-1.8.0 deployed to replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "low_memory_limit",
+   "step": 39,
+   "target": [
+    "replica-2"
+   ],
+   "cause": "memory_limit_gb 40 deployed to replica-2",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 39,
+   "time": "2026-10-30T09:06:30",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-2"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-2"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 50,
+   "time": "2026-10-30T09:08:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

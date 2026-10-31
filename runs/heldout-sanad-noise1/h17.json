@@ -1,0 +1,622 @@
+{
+ "score": {
+  "scenario": "h17",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 520,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 4,
+  "strong_calls": 1,
+  "cost": 0.000668,
+  "tokens_in": 136699,
+  "tokens_out": 31625,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 44,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "overload",
+      "component": [
+       "workers",
+       "queue"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "incoming traffic is 1.67x normal (204 req/s)",
+       "all replicas are slow simultaneously",
+       "queue backlog is growing (1100 requests)"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 44 scale_out -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 44,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is significantly above normal and all replicas are saturated; adding capacity will reduce queue backlog and latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "queue"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 54,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 44,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "queue"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 1.67x normal (204 req/s)",
+          "all replicas are slow simultaneously",
+          "queue backlog is growing (1100 requests)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is significantly above normal and all replicas are saturated; adding capacity will reduce queue backlog and latency."
+        }
+       ],
+       "summary": "Detected system overload due to 1.67x normal traffic causing queue backup and high latency across all replicas; scaling out by 2 replicas to increase processing capacity."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 56,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 90,
+    "first_symptoms": [
+     "backlog:queue",
+     "drops:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "slow:replica-5",
+     "slow:replica-6",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "rollback to max_concurrency=64 performed at step 90",
+       "backlog still high (819) and growing/slow due to residual queue drain time",
+       "all replicas slow because workers are bottlenecked by previous low concurrency or just clearing backlog"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 90 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "workers",
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "incoming traffic 210 req/s is 1.72x normal",
+       "even with max_concurrency=64, if each request takes ~1s, 64 workers can handle ~64 req/s, leaving 146 req/s unhandled or queued",
+       "queue backlog persists because processing rate < arrival rate"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 90,
+      "action": "rollback",
+      "args": {
+       "key": "max_concurrency",
+       "replicas": []
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Restore worker throughput to clear queue and reduce latency",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "workers max_concurrency 4 -> 64",
+      "verified": {
+       "step": 98,
+       "cleared": [
+        "drops:queue",
+        "errors:gateway",
+        "stalled:workers"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4",
+        "slow:replica-5",
+        "slow:replica-6"
+       ]
+      }
+     },
+     {
+      "step": 98,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Incoming traffic (210 req/s) exceeds current worker capacity (64 concurrent). Adding 2 more workers increases capacity to ~96 concurrent requests, helping to clear the backlog and reduce latency.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     }
+    ],
+    "turns": [
+     {
+      "step": 90,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "max_concurrency reduced from 64 to 4 at step 87",
+          "workers dispatching only 16 req/s (normal 180)",
+          "queue backlog 3496 and growing",
+          "all replicas slow (p95 > 220s)",
+          "gateway timeouts after 30s"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "max_concurrency",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Restore worker throughput to clear queue and reduce latency"
+        }
+       ],
+       "summary": "Workers max_concurrency was cut from 64 to 4 at step 87, throttling throughput to 16 req/s, causing queue backlog, drops, and high latency across all replicas; rolling back to 64 should resolve."
+      }
+     },
+     {
+      "step": 98,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "max_concurrency reduced from 64 to 4 at step 87",
+          "rollback to 64 performed at step 90",
+          "backlog still high (1727) and growing/slow due to residual queue drain time",
+          "all replicas slow because workers are bottlenecked by previous low concurrency or just clearing backlog"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 210 req/s is 1.72x normal",
+          "even with max_concurrency=64, if each request takes ~1s, 64 workers can handle ~64 req/s, leaving 146 req/s unhandled or queued",
+          "queue backlog persists because processing rate < arrival rate"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Incoming traffic (210 req/s) exceeds current worker capacity (64 concurrent). Adding 2 more workers increases capacity to ~96 concurrent requests, helping to clear the backlog and reduce latency."
+        }
+       ],
+       "summary": "Rolled back bad config but backlog remains due to overload; scaling out workers to handle excess traffic."
+      }
+     },
+     {
+      "step": 100,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "rollback to max_concurrency=64 performed at step 90",
+          "backlog still high (819) and growing/slow due to residual queue drain time",
+          "all replicas slow because workers are bottlenecked by previous low concurrency or just clearing backlog"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 210 req/s is 1.72x normal",
+          "even with max_concurrency=64, if each request takes ~1s, 64 workers can handle ~64 req/s, leaving 146 req/s unhandled or queued",
+          "queue backlog persists because processing rate < arrival rate"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "No spare GPU nodes available for scale_out. Waiting to see if the backlog drains naturally as the system processes the accumulated queue now that concurrency is restored."
+        }
+       ],
+       "summary": "Waiting for backlog to drain; no capacity to add."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 106,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.016513336,
+  "calls": 63,
+  "tokens_in": 136699,
+  "tokens_out": 31625
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "traffic_spike",
+   "step": 38,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.6x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_worker_concurrency",
+   "step": 87,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 87,
+   "time": "2026-10-30T09:14:30",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  },
+  {
+   "step": 90,
+   "time": "2026-10-30T09:15:00",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 4,
+   "new": 64,
+   "scope": [
+    "workers"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

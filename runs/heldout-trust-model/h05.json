@@ -1,0 +1,298 @@
+{
+ "score": {
+  "scenario": "h05",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 180,
+  "causes": [
+   {
+    "fault": "bad_quantization",
+    "target": [
+     "replica-2"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.00034,
+  "tokens_in": 3502,
+  "tokens_out": 653,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 44,
+    "first_symptoms": [
+     "wrong_answers:replica-2"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2"
+      ],
+      "setting": "quantization",
+      "explains": [
+       "wrong_answers:replica-2"
+      ],
+      "evidence": [
+       "Change log step 38: quantization changed to int4-awq-unvalidated on replica-2.",
+       "Replica-2 is the only replica with int4-awq-unvalidated; others use fp8.",
+       "Canary results show significant errors on replica-2 (Arabic math 4/6, English math 4/6), while other replicas are not reported as failing."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 44 rollback -> not_fixed",
+       "step 56 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 44,
+      "action": "rollback",
+      "args": {
+       "key": "quantization",
+       "replicas": [
+        "replica-2"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The unvalidated int4 quantization setting introduced in step 38 correlates perfectly with the wrong answers on replica-2. Rolling back to the previous valid state (fp8) should restore correctness.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "quantization",
+       "component": [
+        "replica-2"
+       ]
+      },
+      "result": "rolled back quantization on ['replica-2']",
+      "verified": {
+       "step": 52,
+       "cleared": [],
+       "still_open": []
+      },
+      "undone": "set quantization on ['replica-2']"
+     },
+     {
+      "step": 56,
+      "action": "rollback",
+      "args": {
+       "key": "quantization",
+       "replicas": [
+        "replica-2"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback quantization on replica-2 to fp8, the previous value, to fix wrong answers caused by the unvalidated int4-awq quantization.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "quantization",
+       "component": [
+        "replica-2"
+       ]
+      },
+      "result": "rolled back quantization on ['replica-2']",
+      "verified": {
+       "step": 64,
+       "cleared": [
+        "wrong_answers:replica-2"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 44,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "(UNEXPLAINED) wrong_answers:replica-2"
+         ],
+         "evidence": [
+          "Change log step 38: quantization changed to int4-awq-unvalidated on replica-2.",
+          "Replica-2 is the only replica with int4-awq-unvalidated; others use fp8.",
+          "Canary results show significant errors on replica-2 (Arabic math 9/9, English math 7/9), while other replicas are not reported as failing."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "quantization",
+          "replicas": [
+           "replica-2"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The unvalidated int4 quantization setting introduced in step 38 correlates perfectly with the wrong answers on replica-2. Rolling back to the previous valid state (fp8) should restore correctness."
+        }
+       ],
+       "summary": "Suspect bad config (int4 quantization) on replica-2 causing incorrect answers; rolling back quantization to fp8."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "wrong_answers:replica-2"
+         ],
+         "evidence": [
+          "Change log step 38: quantization changed to int4-awq-unvalidated on replica-2.",
+          "Replica-2 is the only replica with int4-awq-unvalidated; others use fp8.",
+          "Canary results show significant errors on replica-2 (Arabic math 4/6, English math 4/6), while other replicas are not reported as failing."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "quantization",
+          "replicas": [
+           "replica-2"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback quantization on replica-2 to fp8, the previous value, to fix wrong answers caused by the unvalidated int4-awq quantization."
+        }
+       ],
+       "summary": "Rolling back quantization on replica-2 to fp8 to fix wrong answers caused by the unvalidated int4-awq setting."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 66,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.00033996600000000003,
+  "calls": 2,
+  "tokens_in": 3502,
+  "tokens_out": 653
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_quantization",
+   "step": 38,
+   "target": [
+    "replica-2"
+   ],
+   "cause": "quantization int4-awq-unvalidated deployed to replica-2",
+   "fix": "rollback:quantization",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "fp8",
+   "new": "int4-awq-unvalidated",
+   "scope": [
+    "replica-2"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "int4 to halve GPU memory"
+  },
+  {
+   "step": 44,
+   "time": "2026-10-30T09:07:20",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "int4-awq-unvalidated",
+   "new": "fp8",
+   "scope": [
+    "replica-2"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 56,
+   "time": "2026-10-30T09:09:20",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "int4-awq-unvalidated",
+   "new": "fp8",
+   "scope": [
+    "replica-2"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

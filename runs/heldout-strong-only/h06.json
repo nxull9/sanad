@@ -1,0 +1,184 @@
+{
+ "score": {
+  "scenario": "h06",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 60,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 9e-05,
+  "tokens_in": 3543,
+  "tokens_out": 440,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "vectordb WARN segment 7 checksum mismatch",
+       "all replicas fail retrieval canaries",
+       "answers differ but all wrong, suggesting shared corrupted index"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 40 failover_vectordb -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "failover_vectordb",
+      "args": {},
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Switch to standby vector DB to test if primary index corruption is causing wrong retrieval answers across all replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "vectordb primary -> standby",
+      "verified": {
+       "step": 48,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "vectordb WARN segment 7 checksum mismatch",
+          "all replicas fail retrieval canaries",
+          "answers differ but all wrong, suggesting shared corrupted index"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "failover_vectordb",
+         "args": {},
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Switch to standby vector DB to test if primary index corruption is causing wrong retrieval answers across all replicas."
+        }
+       ],
+       "summary": "Suspect vector DB index corruption causing wrong retrieval answers on all replicas; failover to standby to verify and mitigate."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 50,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0001730274,
+  "calls": 2,
+  "tokens_in": 3543,
+  "tokens_out": 440
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "index_corruption",
+   "step": 34,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": []
+}

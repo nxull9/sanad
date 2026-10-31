@@ -390,7 +390,7 @@ class Sanad:
                 series = self.tools.metrics(comp, last=8)
                 out.append(f"metrics {comp} (last 8 steps):")
                 out += [f"  {c}.{m}: {[round(v, 3) for v in vals]}" for c, ms in series.items() for m, vals in ms.items()]
-            elif what == "canaries" and comp in self.canaries.rounds:
+            elif what == "canaries" and self.canaries.rounds.get(comp):
                 step, results = self.canaries.rounds[comp][-1]
                 out.append(f"canaries on {comp} at step {step}:")
                 out += [f"  {r['id']} {r['status']}: {str(r.get('reply', r.get('error')))[:80]}" for r in results]

@@ -1,0 +1,133 @@
+{
+ "model": "deepseek/deepseek-v4-flash",
+ "request": {
+  "model": "deepseek/deepseek-v4-flash",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Sanad, the on-call agent for an AI serving platform that answers users in Arabic and English.\nRequests flow: gateway -> identity-service (owned by the identity team, not you) -> queue -> workers -> model replicas (one per GPU node) -> vector database.\n\nEach turn you get the open symptoms (found by monitoring code), the evidence, your ledger of hypotheses, and what your last actions did. Monitoring code, not you, decides whether a fix worked.\n\nHow to work:\n- Several causes can be active at once. Keep one hypothesis per cause. Every open symptom must appear in `explains` of a hypothesis that is not ruled_out.\n- Back each hypothesis with concrete evidence: a metric, a log line, a change log entry, a canary answer.\n- The most recent change is not always the cause. A change can only explain symptoms on what it touched, starting after it was made.\n- Canary questions are asked of each replica separately. If only replicas with a certain setting answer wrongly, suspect that setting. If every replica fails the same kind of question, suspect what they share, such as the vector database. If one replica fails while its settings match healthy ones, suspect its GPU node.\n- Restarting does not undo a bad deploy; rolling back does. Roll back only the replicas that carry the bad value.\n- Overload: when incoming traffic is well above normal and every replica is slow or the queue backs up, add capacity with scale_out. set_weight only moves load between replicas; it adds none.\n- A replica that crashed (segfault, non-zero exit) while its node shows no hardware trouble (no ECC errors, normal temperature) needs a restart. Drain a node only when the node itself shows hardware trouble.\n- A symptom that follows from a cause already in your ledger (for example, lost capacity after hardware went down) belongs in that hypothesis's explains, not in a new cause.\n- Change only what the evidence points at. Leave healthy components alone.\n- Some causes are not yours to fix: another team's service, hardware that needs hands, power. Mitigate what you safely can, then escalate with a clear summary.\n- If a fix did not clear its symptoms, revise the hypothesis rather than repeat the fix.\n\nActions (one to three per turn):\n- rollback {\"key\": setting, \"replicas\": [...]} returns a setting to its previous value. Replica settings: model_version, template, quantization, tokenizer, server_build, memory_limit_gb (give \"replicas\"). Gateway: timeout_ms, log_level. Workers: max_concurrency (no \"replicas\").\n- restart {\"target\": \"replica-N\" or \"workers\"}\n- drain {\"node\": \"gpu-N\"} moves that node's replica to a spare node and takes the node out of service.\n- set_weight {\"replica\": \"replica-N\", \"weight\": 0 to 1} sends less or no traffic to a replica. Undoable.\n- scale_out {\"count\": 1 or 2} adds replicas on spare nodes.\n- failover_vectordb {} switches to the standby vector database.\n- rebuild_index {} rebuilds the active vector index (about 200 s).\n- escalate {\"team\": \"...\", \"summary\": \"...\"} hands a cause to people.\n- inspect {\"what\": \"logs\" or \"metrics\" or \"canaries\", \"component\": \"...\", \"contains\": \"...\"} reads more and changes nothing.\n- wait {} changes nothing.\n\nReply with JSON only:\n{\"ledger\": [{\"id\": \"H1\", \"type\": TYPE, \"component\": [\"...\"], \"setting\": \"setting key or null\", \"explains\": [\"symptom keys\"], \"evidence\": [\"short facts\"], \"status\": \"suspected\" or \"ruled_out\", \"confidence\": 0.0 to 1.0}],\n \"actions\": [{\"action\": \"...\", \"args\": {}, \"hypothesis\": \"H1\", \"purpose\": \"fix\" or \"experiment\" or \"investigate\" or \"escalate\", \"why\": \"short reason\"}],\n \"summary\": \"one sentence\"}\nTYPE is one of: bad_release, bad_config, crash, deadlock, overload, gpu_overheating, gpu_silent_corruption, index_corruption, external_dependency, power_failure, unknown."
+   },
+   {
+    "role": "user",
+    "content": "STEP 64. Incident opened at step 42. Each step is 10 seconds.\n\nOPEN SYMPTOMS\n- backlog:queue: 5031 requests waiting (normal 0)\n- (UNEXPLAINED) drops:queue: queue full: dropped 1272 requests in the last 2 steps\n- (UNEXPLAINED) errors:gateway: error rate 37.6% (normal 0.08%)\n- slow:gateway: p95 latency 31390 ms (normal 3600 ms)\n- slow:replica-1: replica-1 p95 latency 32583 ms (fleet normal 3643 ms)\n- (UNEXPLAINED) slow:replica-2: replica-2 p95 latency 31505 ms (fleet normal 3643 ms)\n- (UNEXPLAINED) slow:replica-3: replica-3 p95 latency 32024 ms (fleet normal 3643 ms)\n- slow:replica-4: replica-4 p95 latency 31264 ms (fleet normal 3643 ms)\n\nYOUR LEDGER\n- H1 bad_config setting=memory_limit_gb on ['replica-2', 'replica-3'] status=not_fixed explains=['backlog:queue', 'slow:gateway', 'slow:replica-1', 'slow:replica-4'] evidence=['memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)', 'replica-2 ERROR OOMKilled: limit 40GB, need 68GB', 'replica-3 ERROR OOMKilled: limit 40GB, need 68GB', 'replica-2 and replica-3 down after OOMs, halving capacity', 'backlog at 1974, latency spike on gateway and remaining replicas due to overload'] history=['step 42 rollback -> partly_fixed', 'step 50 scale_out -> not_fixed']\n\nYOUR RECENT ACTIONS\n- step 42 rollback {\"key\": \"memory_limit_gb\", \"replicas\": [\"replica-2\", \"replica-3\"]} for H1: rolled back memory_limit_gb on ['replica-2', 'replica-3']; checked at step 50: cleared ['restarting:replica-2', 'restarting:replica-3'], still open ['backlog:queue', 'slow:gateway', 'slow:replica-1', 'slow:replica-4']\n- step 50 scale_out {\"count\": 2} for H1: added ['replica-5', 'replica-6']; checked at step 60: cleared nothing, still open ['backlog:queue', 'slow:gateway', 'slow:replica-1', 'slow:replica-4']; undone because it cleared nothing (removed ['replica-5', 'replica-6'])\n\nPLATFORM\npath: gateway -> identity-service (external, owned by identity team) -> queue -> workers -> replicas -> vectordb\nreplica-1: node gpu-1, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-2: node gpu-2, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-3: node gpu-3, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-4: node gpu-4, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nnodes: gpu-1 rack-a, gpu-2 rack-a, gpu-3 rack-a, gpu-4 rack-b, gpu-5 rack-b, gpu-6 rack-b; spare: gpu-5, gpu-6\ngateway: {'timeout_ms': 30000, 'log_level': 'debug'}; workers: {'max_concurrency': 64, 'count': 8}; vectordb: {'active': 'primary', 'rebuilding': False}\nincoming traffic: 247 req/s, 2.02x normal\n\nCHANGE LOG (newest last)\nstep 35 09:05:50: gateway log_level info -> debug on gateway by mfahad (OPS-140: more logging for audit)\nstep 41 09:06:50: model-server memory_limit_gb 80 -> 40 on replica-2, replica-3 by ci-bot (REL-2291: right-size container memory)\nstep 42 09:07:00: model-server memory_limit_gb 40 -> 80 on replica-2, replica-3 by you (Sanad) (INC: rollback)\n\nLOG LINES NOT SEEN BEFORE THE INCIDENT (since step 36; count, first step, example)\n25x from step 39 WARN queue: backlog 1105 requests, oldest waiting 6s\n1x from step 41 ERROR replica-2: OOMKilled while loading weights: limit 40GB, need 68GB\n1x from step 41 ERROR replica-3: OOMKilled while loading weights: limit 40GB, need 68GB\n14x from step 41 ERROR gateway: upstream timeout after 30000ms\n\nALLOWANCE LEFT: 10 turns, 8 changes. Mode: autonomous."
+   }
+  ],
+  "temperature": 0,
+  "max_tokens": 1500,
+  "response_format": {
+   "type": "json_object"
+  },
+  "reasoning": {
+   "enabled": false
+  },
+  "usage": {
+   "include": true
+  }
+ },
+ "text": "{\n  \"ledger\": [\n    {\n      \"id\": \"H1\",\n      \"type\": \"bad_config\",\n      \"component\": [\"replica-2\", \"replica-3\"],\n      \"setting\": \"memory_limit_gb\",\n      \"explains\": [\"backlog:queue\", \"slow:gateway\", \"slow:replica-1\", \"slow:replica-4\"],\n      \"evidence\": [\n        \"memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)\",\n        \"replica-2 ERROR OOMKilled: limit 40GB, need 68GB\",\n        \"replica-3 ERROR OOMKilled: limit 40GB, need 68GB\",\n        \"replica-2 and replica-3 down after OOMs, halving capacity\",\n        \"backlog at 1974, latency spike on gateway and remaining replicas due to overload\"\n      ],\n      \"status\": \"not_fixed\",\n      \"confidence\": 0.9\n    },\n    {\n      \"id\": \"H2\",\n      \"type\": \"overload\",\n      \"component\": [\"queue\", \"gateway\", \"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"],\n      \"setting\": null,\n      \"explains\": [\"drops:queue\", \"errors:gateway\", \"slow:replica-2\", \"slow:replica-3\"],\n      \"evidence\": [\n        \"incoming traffic 2.02x normal (247 req/s)\",\n        \"backlog 5031, queue full drops 1272 in last 2 steps\",\n        \"gateway error rate 37.6% (timeouts)\",\n        \"all replicas show p95 > 31000 ms (fleet normal 3643 ms)\",\n        \"rollback and scale_out did not clear symptoms\"\n      ],\n      \"status\": \"suspected\",\n      \"confidence\": 0.8\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"inspect\",\n      \"args\": {\n        \"what\": \"canaries\",\n        \"component\": \"replica-2\",\n        \"contains\": \"answer\"\n      },\n      \"hypothesis\": \"H2\",\n      \"purpose\": \"investigate\",\n      \"why\": \"Check if replica-2 (now with correct memory) answers correctly; if not, suspect deeper issue\"\n    },\n    {\n      \"action\": \"inspect\",\n      \"args\": {\n        \"what\": \"canaries\",\n        \"component\": \"replica-3\",\n        \"contains\": \"answer\"\n      },\n      \"hypothesis\": \"H2\",\n      \"purpose\": \"investigate\",\n      \"why\": \"Check if replica-3 (now with correct memory) answers correctly; if not, suspect deeper issue\"\n    }\n  ],\n  \"summary\": \"Rollback and scale_out did not resolve overload; investigating canary answers on previously OOM'd replicas to rule out persistent corruption or config issue.\"\n}",
+ "reply": {
+  "ledger": [
+   {
+    "id": "H1",
+    "type": "bad_config",
+    "component": [
+     "replica-2",
+     "replica-3"
+    ],
+    "setting": "memory_limit_gb",
+    "explains": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-4"
+    ],
+    "evidence": [
+     "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+     "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+     "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+     "replica-2 and replica-3 down after OOMs, halving capacity",
+     "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+    ],
+    "status": "not_fixed",
+    "confidence": 0.9
+   },
+   {
+    "id": "H2",
+    "type": "overload",
+    "component": [
+     "queue",
+     "gateway",
+     "replica-1",
+     "replica-2",
+     "replica-3",
+     "replica-4"
+    ],
+    "setting": null,
+    "explains": [
+     "drops:queue",
+     "errors:gateway",
+     "slow:replica-2",
+     "slow:replica-3"
+    ],
+    "evidence": [
+     "incoming traffic 2.02x normal (247 req/s)",
+     "backlog 5031, queue full drops 1272 in last 2 steps",
+     "gateway error rate 37.6% (timeouts)",
+     "all replicas show p95 > 31000 ms (fleet normal 3643 ms)",
+     "rollback and scale_out did not clear symptoms"
+    ],
+    "status": "suspected",
+    "confidence": 0.8
+   }
+  ],
+  "actions": [
+   {
+    "action": "inspect",
+    "args": {
+     "what": "canaries",
+     "component": "replica-2",
+     "contains": "answer"
+    },
+    "hypothesis": "H2",
+    "purpose": "investigate",
+    "why": "Check if replica-2 (now with correct memory) answers correctly; if not, suspect deeper issue"
+   },
+   {
+    "action": "inspect",
+    "args": {
+     "what": "canaries",
+     "component": "replica-3",
+     "contains": "answer"
+    },
+    "hypothesis": "H2",
+    "purpose": "investigate",
+    "why": "Check if replica-3 (now with correct memory) answers correctly; if not, suspect deeper issue"
+   }
+  ],
+  "summary": "Rollback and scale_out did not resolve overload; investigating canary answers on previously OOM'd replicas to rule out persistent corruption or config issue."
+ },
+ "usage": {
+  "prompt_tokens": 2286,
+  "completion_tokens": 653,
+  "total_tokens": 2939,
+  "cost": 0.00040815,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.00040815,
+   "upstream_inference_prompt_cost": 0.0001143,
+   "upstream_inference_completions_cost": 0.00029385
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ },
+ "cost": 0.00040815
+}

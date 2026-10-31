@@ -1,0 +1,1445 @@
+{
+ "score": {
+  "scenario": "h19",
+  "faults": 3,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 410,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 5,
+  "unneeded_changes": 1,
+  "blocked": 1,
+  "undone": 2,
+  "approvals": 0,
+  "model_calls": 8,
+  "strong_calls": 7,
+  "cost": 0.002958,
+  "tokens_in": 126117,
+  "tokens_out": 30918,
+  "escalations": [
+   {
+    "step": 86,
+    "team": "identity",
+    "summary": "Queue backlog and slow gateway persist despite adding replicas; suspect identity-service latency causing upstream timeouts.",
+    "hypothesis": "H5",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Rollback of model_version cleared nothing; all replicas still wrong."
+      ],
+      "confidence": 1.0,
+      "attempts": 1,
+      "history": [
+       "step 40 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "failover_vectordb cleared wrong_answers symptoms."
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 52 failover_vectordb -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "queue",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "Incoming traffic 211 req/s (1.70x normal).",
+       "Queue backlog 809, all replicas p95 > 6s, gateway p95 6.9s.",
+       "scale_out added 2 replicas but did not clear backlog or latency."
+      ],
+      "confidence": 0.6,
+      "attempts": 1,
+      "history": [
+       "step 52 scale_out -> not_fixed",
+       "step 74 scale_out -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "stalled:workers"
+      ],
+      "evidence": [
+       "Rollback of max_concurrency to 64 fixed stalled workers."
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 66 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H5": {
+      "id": "H5",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "Gateway timeouts after 30000ms suggest upstream (identity) delays.",
+       "Queue backlog persists despite added replicas, pointing to bottleneck before replicas."
+      ],
+      "confidence": 0.5,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Since all replicas are on v2.3 and failing, rolling back to the previous known good version is a standard first step to rule out a model regression. If the issue persists after rollback, it points strongly to the Vector DB.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 48,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 52,
+      "action": "failover_vectordb",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "All replicas share the vector DB and all fail retrieval canaries; switching to standby may clear wrong answers if primary index is corrupted.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "vectordb primary -> standby",
+      "verified": {
+       "step": 62,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 52,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Traffic is 1.63x normal and all replicas are slow with queue backlog; adding capacity on spare nodes (gpu-5, gpu-6) should relieve overload.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "queue",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 62,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "drops:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4",
+        "stalled:workers"
+       ]
+      },
+      "undone": "removed ['replica-5', 'replica-6']"
+     },
+     {
+      "step": 66,
+      "action": "rollback",
+      "args": {
+       "key": "max_concurrency",
+       "replicas": []
+      },
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Workers max_concurrency was reduced from 64 to 4 at step 47, which explains the stalled workers and resulting queue buildup. Rolling back to 64 should restore throughput.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "workers max_concurrency 4 -> 64",
+      "verified": {
+       "step": 74,
+       "cleared": [
+        "stalled:workers"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 74,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Incoming traffic is 1.72x normal and queue backlog is deep; scaling out adds capacity to handle the load.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "queue",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 84,
+       "cleared": [
+        "drops:queue",
+        "errors:gateway"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 84,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Traffic is 1.7x normal and all replicas are slow; adding capacity is the only way to absorb the load since no spare nodes exist and workers are healthy.",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: scale_out {'count': 2} already ran 2 times; it is not working, rethink or escalate"
+     },
+     {
+      "step": 86,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "Queue backlog and slow gateway persist despite adding replicas; suspect identity-service latency causing upstream timeouts."
+      },
+      "hypothesis": "H5",
+      "purpose": "escalate",
+      "why": "Identity-service is external and not ours to fix; escalate with evidence of upstream timeouts.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity"
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas are running model_version=allam-34b-v2.3.",
+          "All replicas are answering canary questions incorrectly with specific, consistent wrong values (e.g., '30 minutes' instead of '5', '85 degrees' instead of '90').",
+          "The errors appear to be retrieval-based hallucinations or incorrect grounding in the vector database, as the answers are plausible but factually wrong according to the canary keys.",
+          "Since all replicas share the same model version and template, and the error pattern is consistent across nodes, the issue likely lies in a shared component (Vector DB) or a systemic model behavior introduced by the current release."
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas query the same Vector Database.",
+          "The wrong answers contain specific numbers that might be present in the corrupted index but are not the correct ground truth for the canary questions.",
+          "If the index contains stale or incorrect embeddings/documents, all replicas will retrieve the wrong context, leading to the observed wrong answers."
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "vectordb",
+          "contains": "retrieval_stats"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "To check if the vector database is returning relevant documents for the canary queries, which would confirm if the issue is retrieval-based (index corruption) rather than generation-based (model bug)."
+        },
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Since all replicas are on v2.3 and failing, rolling back to the previous known good version is a standard first step to rule out a model regression. If the issue persists after rollback, it points strongly to the Vector DB."
+        }
+       ],
+       "summary": "Suspected bad model release or vector index corruption affecting all replicas; rolling back model version and inspecting vector DB retrieval stats."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "Rollback of model_version cleared nothing; all replicas still wrong."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas share the same vector DB and all fail retrieval canaries with plausible but wrong numbers.",
+          "Rollback of model_version did not fix; shared component remains suspect."
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "queue",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "Incoming traffic 201 req/s (1.63x normal).",
+          "Queue backlog 5132, drops 3768, workers dispatching 16 req/s vs normal 179.",
+          "All replicas p95 > 294s, gateway p95 310s, upstream timeouts."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "failover_vectordb",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "All replicas share the vector DB and all fail retrieval canaries; switching to standby may clear wrong answers if primary index is corrupted."
+        },
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Traffic is 1.63x normal and all replicas are slow with queue backlog; adding capacity on spare nodes (gpu-5, gpu-6) should relieve overload."
+        }
+       ],
+       "summary": "Suspect vector DB index corruption causing wrong answers on all replicas, and overload from high traffic causing queue backlog and latency; failover the vector DB and scale out to add capacity."
+      }
+     },
+     {
+      "step": 66,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "Rollback of model_version cleared nothing; all replicas still wrong."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All replicas share the same vector DB and all fail retrieval canaries with plausible but wrong numbers.",
+          "Rollback of model_version did not fix; shared component remains suspect.",
+          "failover_vectordb cleared wrong_answers symptoms."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "queue",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "Incoming traffic 213 req/s (1.72x normal).",
+          "Queue backlog 5076, drops 3911, workers dispatching 17 req/s vs normal 179.",
+          "All replicas p95 > 311s, gateway p95 316s, upstream timeouts.",
+          "scale_out added 2 replicas but did not reduce backlog or latency."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "At step 47, workers max_concurrency was reduced from 64 to 4 by ops-bot.",
+          "Workers dispatching 17 req/s vs normal 179, far below capacity.",
+          "Queue backlog and drops are consistent with workers being unable to consume requests fast enough."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "max_concurrency",
+          "replicas": []
+         },
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "Workers max_concurrency was reduced from 64 to 4 at step 47, which explains the stalled workers and resulting queue buildup. Rolling back to 64 should restore throughput."
+        }
+       ],
+       "summary": "Roll back workers max_concurrency from 4 to 64 to restore worker throughput, which is the likely cause of the queue backlog and all downstream symptoms."
+      }
+     },
+     {
+      "step": 74,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "Rollback of model_version cleared nothing; all replicas still wrong."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All replicas share the same vector DB and all fail retrieval canaries with plausible but wrong numbers.",
+          "Rollback of model_version did not fix; shared component remains suspect.",
+          "failover_vectordb cleared wrong_answers symptoms."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "queue",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic 213 req/s (1.72x normal).",
+          "Queue backlog 5043, drops 934, workers dispatching 17 req/s vs normal 179.",
+          "All replicas p95 > 29s, gateway p95 32s, upstream timeouts.",
+          "scale_out added 2 replicas but did not reduce backlog or latency."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.8
+        },
+        {
+         "id": "H4",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [],
+         "evidence": [
+          "At step 47, workers max_concurrency was reduced from 64 to 4 by ops-bot.",
+          "Workers dispatching 17 req/s vs normal 179, far below capacity.",
+          "Queue backlog and drops are consistent with workers being unable to consume requests fast enough."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch rate"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "After fixing max_concurrency, workers should be dispatching near normal rate. Check if dispatch rate recovered or if workers are still slow."
+        }
+       ],
+       "summary": "Workers max_concurrency restored to 64, but queue backlog, drops, and high latency persist; investigating worker dispatch rate to see if overload hypothesis still holds."
+      }
+     },
+     {
+      "step": 74,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "Rollback of model_version cleared nothing; all replicas still wrong."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All replicas share the same vector DB and all fail retrieval canaries with plausible but wrong numbers.",
+          "Rollback of model_version did not fix; shared component remains suspect.",
+          "failover_vectordb cleared wrong_answers symptoms."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "queue",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic 213 req/s (1.72x normal).",
+          "Queue backlog 5043, drops 934, workers dispatching 17 req/s vs normal 179.",
+          "All replicas p95 > 29s, gateway p95 32s, upstream timeouts.",
+          "scale_out added 2 replicas but did not reduce backlog or latency."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [],
+         "evidence": [
+          "At step 47, workers max_concurrency was reduced from 64 to 4 by ops-bot.",
+          "Workers dispatching 17 req/s vs normal 179, far below capacity.",
+          "Queue backlog and drops are consistent with workers being unable to consume requests fast enough."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "gateway",
+          "contains": "timeout"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if gateway timeouts are due to upstream identity service or replicas."
+        }
+       ],
+       "summary": "Workers are now dispatching at normal rate (188 req/s) but queue backlog and drops persist; need to investigate if gateway timeouts are caused by identity service or replicas."
+      }
+     },
+     {
+      "step": 74,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "Rollback of model_version cleared nothing; all replicas still wrong."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All replicas share the same vector DB and all fail retrieval canaries with plausible but wrong numbers.",
+          "Rollback of model_version did not fix; shared component remains suspect.",
+          "failover_vectordb cleared wrong_answers symptoms."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "queue",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic 213 req/s (1.72x normal).",
+          "Queue backlog 5043, drops 934, workers dispatching 17 req/s vs normal 179.",
+          "All replicas p95 > 29s, gateway p95 32s, upstream timeouts.",
+          "scale_out added 2 replicas but did not reduce backlog or latency."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.8
+        },
+        {
+         "id": "H4",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [],
+         "evidence": [
+          "At step 47, workers max_concurrency was reduced from 64 to 4 by ops-bot.",
+          "Workers dispatching 17 req/s vs normal 179, far below capacity.",
+          "Queue backlog and drops are consistent with workers being unable to consume requests fast enough."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Incoming traffic is 1.72x normal and queue backlog is deep; scaling out adds capacity to handle the load."
+        }
+       ],
+       "summary": "Workers max_concurrency has been restored to 64; scaling out replicas to add capacity for the elevated traffic to reduce queue backlog and latency."
+      }
+     },
+     {
+      "step": 84,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "Rollback of model_version cleared nothing; all replicas still wrong."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "failover_vectordb cleared wrong_answers symptoms."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "queue",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "Incoming traffic 210 req/s (1.70x normal).",
+          "Queue backlog 1681, all replicas p95 > 8s, gateway p95 10.4s.",
+          "scale_out added 2 replicas but did not clear backlog or latency."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H4",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [],
+         "evidence": [
+          "Rollback of max_concurrency to 64 fixed stalled workers."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Traffic is 1.7x normal and all replicas are slow; adding capacity is the only way to absorb the load since no spare nodes exist and workers are healthy."
+        }
+       ],
+       "summary": "Overload persists with high traffic and all replicas slow; scaling out more replicas to add capacity."
+      }
+     },
+     {
+      "step": 86,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "Rollback of model_version cleared nothing; all replicas still wrong."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "failover_vectordb cleared wrong_answers symptoms."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "queue",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic 211 req/s (1.70x normal).",
+          "Queue backlog 809, all replicas p95 > 6s, gateway p95 6.9s.",
+          "scale_out added 2 replicas but did not clear backlog or latency."
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H4",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [],
+         "evidence": [
+          "Rollback of max_concurrency to 64 fixed stalled workers."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Gateway timeouts after 30000ms suggest upstream (identity) delays.",
+          "Queue backlog persists despite added replicas, pointing to bottleneck before replicas."
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "identity-service",
+          "contains": "latency"
+         },
+         "hypothesis": "H5",
+         "purpose": "investigate",
+         "why": "Check if identity-service is the bottleneck causing queue backlog and slow responses."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "Queue backlog and slow gateway persist despite adding replicas; suspect identity-service latency causing upstream timeouts."
+         },
+         "hypothesis": "H5",
+         "purpose": "escalate",
+         "why": "Identity-service is external and not ours to fix; escalate with evidence of upstream timeouts."
+        }
+       ],
+       "summary": "Overload hypothesis weakened by failed scale-outs; escalating suspected identity-service latency as the bottleneck."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 86,
+      "team": "identity",
+      "summary": "Queue backlog and slow gateway persist despite adding replicas; suspect identity-service latency causing upstream timeouts.",
+      "hypothesis": "H5",
+      "automatic": false
+     }
+    ],
+    "changes": 5,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 90,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.013949108300000004,
+  "calls": 57,
+  "tokens_in": 126117,
+  "tokens_out": 30918
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "index_corruption",
+   "step": 37,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 44,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.6x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_worker_concurrency",
+   "step": 47,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.2",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 47,
+   "time": "2026-10-30T09:07:50",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  },
+  {
+   "step": 66,
+   "time": "2026-10-30T09:11:00",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 4,
+   "new": 64,
+   "scope": [
+    "workers"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

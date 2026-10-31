@@ -1,0 +1,239 @@
+{
+ "score": {
+  "scenario": "h08",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": 50,
+  "causes": [
+   {
+    "fault": "bad_model",
+    "target": [
+     "replica-1",
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 0.00013,
+  "tokens_in": 11875,
+  "tokens_out": 3061,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "Replicas 1, 2, and 3 are running model_version allam-34b-v2.4-rc* (new RC)",
+       "Replica 4 is running model_version allam-34b-v2.3* (previous stable) and is not listed in wrong answers symptoms",
+       "The wrong answers show factual errors (capital city, leap year days) consistent with a regression in the new model version rather than infrastructure issues",
+       "All affected replicas share the same new model version and template, while the unaffected replica has the old version"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback the faulty release candidate (v2.4-rc) on the three affected replicas to the previous stable version (v2.3) which is known to be working correctly on replica-4.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-1', 'replica-2', 'replica-3']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Replicas 1, 2, and 3 are running model_version allam-34b-v2.4-rc* (new RC)",
+          "Replica 4 is running model_version allam-34b-v2.3* (previous stable) and is not listed in wrong answers symptoms",
+          "The wrong answers show factual errors (capital city, leap year days) consistent with a regression in the new model version rather than infrastructure issues",
+          "All affected replicas share the same new model version and template, while the unaffected replica has the old version"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback the faulty release candidate (v2.4-rc) on the three affected replicas to the previous stable version (v2.3) which is known to be working correctly on replica-4."
+        }
+       ],
+       "summary": "Rolled back the bad model release (allam-34b-v2.4-rc) on replicas 1, 2, and 3 to the previous stable version to fix factual answer regressions."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 52,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0013009299999999998,
+  "calls": 6,
+  "tokens_in": 11875,
+  "tokens_out": 3061
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_model",
+   "step": 37,
+   "target": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "model_version allam-34b-v2.4-rc deployed to replica-1, replica-2, replica-3",
+   "fix": "rollback:model_version",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.4-rc",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "ALLaM 2.4 release candidate"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.4-rc",
+   "new": "allam-34b-v2.3",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

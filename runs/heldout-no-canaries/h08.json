@@ -1,0 +1,81 @@
+{
+ "score": {
+  "scenario": "h08",
+  "faults": 1,
+  "success": false,
+  "false_alarm": false,
+  "detected": false,
+  "detect_seconds": null,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "bad_model",
+    "target": [
+     "replica-1",
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 0,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 1648,
+  "tokens_out": 501,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [],
+  "cost": 0.0001317555,
+  "calls": 1,
+  "tokens_in": 1648,
+  "tokens_out": 501
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_model",
+   "step": 37,
+   "target": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "model_version allam-34b-v2.4-rc deployed to replica-1, replica-2, replica-3",
+   "fix": "rollback:model_version",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.4-rc",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "ALLaM 2.4 release candidate"
+  }
+ ]
+}

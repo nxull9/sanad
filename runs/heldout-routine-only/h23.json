@@ -1,0 +1,776 @@
+{
+ "score": {
+  "scenario": "h23",
+  "faults": 4,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 440,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   },
+   {
+    "fault": "bad_gateway_timeout",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_template",
+    "target": [
+     "replica-1",
+     "replica-2"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 4,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 1,
+  "model_calls": 4,
+  "strong_calls": 0,
+  "cost": 0.000791,
+  "tokens_in": 181339,
+  "tokens_out": 51373,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 44,
+    "first_symptoms": [
+     "errors:gateway",
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "gateway"
+      ],
+      "setting": "timeout_ms",
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "Gateway timeout was reduced to 800ms at step 40, causing errors.",
+       "Rolled back to 30000ms at step 44."
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 44 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [
+       "restarting:replica-1",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "restarting:replica-4",
+       "slow:gateway"
+      ],
+      "evidence": [
+       "Step 51 change: memory_limit_gb 80 -> 40 on all replicas.",
+       "Logs show OOMKilled for all 4 replicas at step 51 (limit 40GB, need 68GB).",
+       "All replicas are DOWN due to crashes.",
+       "Gateway is slow/erroring because no healthy replicas are available to serve requests."
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 52 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2"
+      ],
+      "evidence": [
+       "Step 46 change: template chat-tpl-12 -> chat-tpl-13 on replica-1, replica-2.",
+       "Replicas 1 and 2 use chat-tpl-13 and fail format/retrieval canaries.",
+       "Replicas 3 and 4 use chat-tpl-12 and pass those specific canaries (though they have other issues).",
+       "The error 'بالتأكيد!...' indicates the new template is not enforcing strict JSON formatting correctly or has a different system prompt structure."
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 62 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "external_dependency",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Step 46 WARN vectordb: segment 7 checksum mismatch; serving cached segment.",
+       "Replicas 3 and 4 answer retrieval questions wrongly with outdated info ('15 minutes' vs expected '5').",
+       "This suggests the vector index contains stale or corrupted data, affecting retrieval-based answers."
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 62 rebuild_index -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 44,
+      "action": "rollback",
+      "args": {
+       "key": "timeout_ms",
+       "replicas": []
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The gateway timeout was tightened to 800ms which is causing upstream timeouts (logs confirm this). This is likely causing the high error rate and potentially contributing to the wrong answers if the system falls back to a degraded mode or if the 'wrong answers' are artifacts of the timeout handling (though the specific wrong answers look like model outputs, the error rate is the primary indicator of the config break).",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "timeout_ms",
+       "component": [
+        "gateway"
+       ]
+      },
+      "result": "gateway timeout_ms 800 -> 30000",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": [
+        "errors:gateway"
+       ]
+      }
+     },
+     {
+      "step": 52,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "The memory limit was reduced to 40GB at step 51, causing all replicas to OOMKilled as they require 68GB. Rolling back to 80GB will restore capacity and stop the restart loop.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "restarting:replica-1",
+        "restarting:replica-2",
+        "restarting:replica-3",
+        "restarting:replica-4",
+        "slow:gateway"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 62,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-1",
+        "replica-2"
+       ]
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Rollback the bad template change that causes format/retrieval failures on replicas 1 and 2.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-1",
+        "replica-2"
+       ]
+      },
+      "result": "rolled back template on ['replica-1', 'replica-2']",
+      "verified": {
+       "step": 90,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 62,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Rebuild the vector index to fix the checksum mismatch and stale data affecting retrieval answers on replicas 3 and 4.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 90,
+       "cleared": [
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 44,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway: error rate 51.3% (normal 0.07%)",
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Gateway timeout reduced from 30000ms to 800ms at step 40.",
+          "Log shows 'upstream timeout after 800ms' starting step 40.",
+          "All replicas are returning the same wrong answer, likely because the gateway is timing out before receiving the correct model response and falling back to a cached/default or partial response, or the 'wrong answer' is actually the result of a failed retrieval that the model is hallucinating due to context loss, but more critically, the high error rate indicates the requests are failing or being handled incorrectly by the gateway layer itself."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "timeout_ms",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The gateway timeout was tightened to 800ms which is causing upstream timeouts (logs confirm this). This is likely causing the high error rate and potentially contributing to the wrong answers if the system falls back to a degraded mode or if the 'wrong answers' are artifacts of the timeout handling (though the specific wrong answers look like model outputs, the error rate is the primary indicator of the config break)."
+        }
+       ],
+       "summary": "Rolling back the gateway timeout_ms to 30000ms to resolve upstream timeouts and high error rates."
+      }
+     },
+     {
+      "step": 52,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway",
+       "restarting:replica-1",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "restarting:replica-4",
+       "slow:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [],
+         "evidence": [
+          "Gateway timeout was reduced to 800ms at step 40, causing errors."
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0,
+         "history": [
+          "step 44 rollback -> partly_fixed"
+         ]
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-1",
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "restarting:replica-4",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Step 51 change: memory_limit_gb 80 -> 40 on all replicas.",
+          "Logs show OOMKilled for all 4 replicas at step 51 (limit 40GB, need 68GB).",
+          "All replicas are DOWN due to crashes.",
+          "Gateway is slow/erroring because no healthy replicas are available to serve requests."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "The memory limit was reduced to 40GB at step 51, causing all replicas to OOMKilled as they require 68GB. Rolling back to 80GB will restore capacity and stop the restart loop."
+        }
+       ],
+       "summary": "Rolled back memory_limit_gb to 80GB on all replicas to fix OOMKilled crashes caused by REL-2291."
+      }
+     },
+     {
+      "step": 60,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "_unparsed": "{\n  \"ledger\": [\n    {\n      \"id\": \"H1\",\n      \"type\": \"bad_config\",\n      \"component\": [\n        \"gateway\"\n      ],\n      \"setting\": \"timeout_ms\",\n      \"explains\": [],\n      \"evidence\": [\n        \"Gateway timeout was reduced to 800ms at step 40, causing errors.\"\n      ],\n      \"status\": \"ruled_out\",\n      \"confidence\": 1.0\n    },\n    {\n      \"id\": \"H2\",\n      \"type\": \"bad_config\",\n      \"component\": [\n        \"replica-1\",\n        \"replica-2\",\n        \"replica-3\",\n        \"replica-4\"\n      ],\n  "
+      }
+     },
+     {
+      "step": 62,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "Gateway timeout was reduced to 800ms at step 40, causing errors.",
+          "Rolled back to 30000ms at step 44."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-1",
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "restarting:replica-4",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Step 51 change: memory_limit_gb 80 -> 40 on all replicas.",
+          "Logs show OOMKilled for all 4 replicas at step 51 (limit 40GB, need 68GB).",
+          "All replicas are DOWN due to crashes.",
+          "Gateway is slow/erroring because no healthy replicas are available to serve requests."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2"
+         ],
+         "evidence": [
+          "Step 46 change: template chat-tpl-12 -> chat-tpl-13 on replica-1, replica-2.",
+          "Replicas 1 and 2 use chat-tpl-13 and fail format/retrieval canaries.",
+          "Replicas 3 and 4 use chat-tpl-12 and pass those specific canaries (though they have other issues).",
+          "The error 'بالتأكيد!...' indicates the new template is not enforcing strict JSON formatting correctly or has a different system prompt structure."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "external_dependency",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Step 46 WARN vectordb: segment 7 checksum mismatch; serving cached segment.",
+          "Replicas 3 and 4 answer retrieval questions wrongly with outdated info ('15 minutes' vs expected '5').",
+          "This suggests the vector index contains stale or corrupted data, affecting retrieval-based answers."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-1",
+           "replica-2"
+          ]
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Rollback the bad template change that causes format/retrieval failures on replicas 1 and 2."
+        },
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "Rebuild the vector index to fix the checksum mismatch and stale data affecting retrieval answers on replicas 3 and 4."
+        }
+       ],
+       "summary": "Rolled back the bad template on replicas 1 and 2 and triggered a vector index rebuild to address retrieval corruption."
+      }
+     }
+    ],
+    "notes": [
+     "step 60: reply was not valid JSON"
+    ],
+    "escalations": [],
+    "changes": 4,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 92,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0126862689,
+  "calls": 78,
+  "tokens_in": 181339,
+  "tokens_out": 51373
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "index_corruption",
+   "step": 38,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_gateway_timeout",
+   "step": 40,
+   "target": [
+    "gateway"
+   ],
+   "cause": "gateway timeout_ms cut to 800",
+   "fix": "rollback:timeout_ms",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "bad_template",
+   "step": 46,
+   "target": [
+    "replica-1",
+    "replica-2"
+   ],
+   "cause": "template chat-tpl-13 deployed to replica-1, replica-2",
+   "fix": "rollback:template",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f5",
+   "kind": "low_memory_limit",
+   "step": 51,
+   "target": [],
+   "cause": "memory_limit_gb 40 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "gateway",
+   "key": "timeout_ms",
+   "old": 30000,
+   "new": 800,
+   "scope": [
+    "gateway"
+   ],
+   "author": "jsmith",
+   "ticket": "OPS-118",
+   "note": "tighten timeout to protect upstream"
+  },
+  {
+   "step": 44,
+   "time": "2026-10-30T09:07:20",
+   "component": "gateway",
+   "key": "timeout_ms",
+   "old": 800,
+   "new": 30000,
+   "scope": [
+    "gateway"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 46,
+   "time": "2026-10-30T09:07:40",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-1",
+    "replica-2"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "chat template refresh"
+  },
+  {
+   "step": 51,
+   "time": "2026-10-30T09:08:30",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 52,
+   "time": "2026-10-30T09:08:40",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 62,
+   "time": "2026-10-30T09:10:20",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-13",
+   "new": "chat-tpl-12",
+   "scope": [
+    "replica-1",
+    "replica-2"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

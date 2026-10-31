@@ -1,0 +1,1560 @@
+{
+ "score": {
+  "scenario": "h12",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 140,
+  "causes": [
+   {
+    "fault": "rack_power",
+    "target": [
+     "rack-b"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 12,
+  "strong_calls": 11,
+  "cost": 0.004627,
+  "tokens_in": 52502,
+  "tokens_out": 13243,
+  "escalations": [
+   {
+    "step": 40,
+    "team": "infrastructure-hardware",
+    "summary": "Rack-b experiencing PSU faults affecting gpu-4, gpu-5, and gpu-6. All three nodes are unreachable with zero telemetry. Immediate hardware intervention required.",
+    "hypothesis": "H1",
+    "automatic": false
+   },
+   {
+    "step": 156,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, down:replica-4, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, unreachable:gpu-4, unreachable:gpu-5, unreachable:gpu-6. Ledger: H1 power_failure  on ['gpu-4', 'gpu-5', 'gpu-6'] [escalated]; H2 bad_config  on ['replica-1'] [ruled_out]; H3 index_corruption  on ['vectordb'] [fixed]; H4 overload  on ['gateway', 'replica-1', 'replica-2', 'replica-3'] [suspected]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "down:replica-4",
+     "unreachable:gpu-4",
+     "unreachable:gpu-5",
+     "unreachable:gpu-6"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "power_failure",
+      "component": [
+       "gpu-4",
+       "gpu-5",
+       "gpu-6"
+      ],
+      "setting": null,
+      "explains": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "evidence": [
+       "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+       "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_config",
+      "component": [
+       "replica-1"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1"
+      ],
+      "evidence": [
+       "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+       "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+       "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+       "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 140 set_weight -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+       "replica-2 and replica-3 share the same vectordb (primary)",
+       "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1",
+       "vectordb log: segment 7 checksum mismatch; serving cached segment"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 48 failover_vectordb -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "replica-1",
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3"
+      ],
+      "evidence": [
+       "incoming traffic 140 req/s, 1.14x normal",
+       "replica-4 down, losing 25% capacity",
+       "all remaining replicas show p95 latency ~36-37s vs fleet normal 3.6s",
+       "gateway p95 36565ms vs normal 3600ms",
+       "scale_out failed: no spare GPU node to scale onto",
+       "queue backlog 4324 requests, oldest waiting 15s"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-4"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Node gpu-4 is down due to power failure; drain moves its traffic to healthy nodes.",
+      "ran": false,
+      "risk": "medium",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "no spare GPU node to move to"
+     },
+     {
+      "step": 40,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure-hardware",
+       "summary": "Rack-b experiencing PSU faults affecting gpu-4, gpu-5, and gpu-6. All three nodes are unreachable with zero telemetry. Immediate hardware intervention required."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Power supply issues require physical hardware repair which is outside the scope of software fixes.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "handed to infrastructure-hardware"
+     },
+     {
+      "step": 48,
+      "action": "failover_vectordb",
+      "args": {},
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Switch to standby vectordb to see if checksum mismatch is causing wrong answers on replicas 2 and 3.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "vectordb primary -> standby",
+      "verified": {
+       "step": 56,
+       "cleared": [
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 138,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "replica-4 is down due to power failure, reducing capacity; traffic is above normal and all remaining replicas are slow. Adding replicas on spare nodes (gpu-5, gpu-6) will restore capacity and relieve overload.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 140,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "Rack-b power failure (PSU fault) has taken down gpu-4, gpu-5, gpu-6, losing replica-4 and all spare nodes. Remaining replicas (1-3) are overloaded (1.18x traffic, 25% capacity loss) causing high latency. Need hardware repair or additional capacity."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Power failure is not fixable by software actions; need hardware team to repair PSU on rack-b.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "H1 was already handed to people"
+     },
+     {
+      "step": 140,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-1",
+       "weight": 0.0
+      },
+      "hypothesis": "H2",
+      "purpose": "experiment",
+      "why": "Temporarily remove replica-1 from traffic to see if it is causing wrong answers and to reduce load on the remaining replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": null,
+       "component": [
+        "replica-1"
+       ]
+      },
+      "result": "replica-1 traffic weight 1.0 -> 0.0",
+      "verified": {
+       "step": 148,
+       "cleared": [],
+       "still_open": []
+      },
+      "undone": "replica-1 traffic weight 0.0 -> 1.0"
+     },
+     {
+      "step": 152,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "Rack-b power failure (PSU fault) has taken down gpu-4, gpu-5, gpu-6, losing replica-4 and all spare nodes. Remaining replicas (1-3) are overloaded (1.14x traffic, 25% capacity loss) causing high latency and queue backlog. Need hardware repair or additional capacity."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Power failure is not fixable by us; already escalated but still open, re-escalate to emphasize urgency as overload worsens.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "H1 was already handed to people"
+     },
+     {
+      "step": 154,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "Rack-b power failure (PSU fault) has taken down gpu-4, gpu-5, gpu-6, losing replica-4 and all spare nodes. Remaining replicas (1-3) are overloaded (1.13x traffic, 25% capacity loss) causing high latency and queue backlog. Need hardware repair or additional capacity."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Hardware power failure is not fixable by software; already escalated, but reiterate to ensure attention.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "gpu-5",
+        "gpu-6"
+       ]
+      },
+      "result": "H1 was already handed to people"
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-4"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Node gpu-4 is down due to power failure; drain moves its traffic to healthy nodes."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure-hardware",
+          "summary": "Rack-b experiencing PSU faults affecting gpu-4, gpu-5, and gpu-6. All three nodes are unreachable with zero telemetry. Immediate hardware intervention required."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Power supply issues require physical hardware repair which is outside the scope of software fixes."
+        }
+       ],
+       "summary": "Identified a power failure in rack-b causing gpu-4, gpu-5, and gpu-6 to go offline; drained the active replica on gpu-4 and escalated to infrastructure team."
+      }
+     },
+     {
+      "step": 44,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "English retrieval"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if the wrong answers are specific to English retrieval or also affect other canary types; replica-1 is the only replica with wrong answers, and it is not affected by the power failure."
+        }
+       ],
+       "summary": "Rack-b power failure escalated; investigating replica-1's wrong English retrieval answers as a possible bad config or isolated issue."
+      }
+     },
+     {
+      "step": 44,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-2",
+          "contains": "docs-"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-2 also fails the same document canaries; if yes, the issue is not specific to replica-1 but shared (e.g., vectordb or index)."
+        }
+       ],
+       "summary": "Investigating whether the wrong answers on replica-1 are isolated or shared with replica-2 to narrow down the cause."
+      }
+     },
+     {
+      "step": 44,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-3",
+          "contains": "docs-"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-3 (same template) also fails English retrieval canaries to confirm template issue"
+        }
+       ],
+       "summary": "Power failure in rack-b explains three unreachable GPUs and one down replica; English retrieval errors on replica-1 and replica-2 suggest a template or vector database issue, so inspecting replica-3 canaries."
+      }
+     },
+     {
+      "step": 46,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "vectordb",
+          "contains": "retrieval"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if all replicas fail the same retrieval canaries to confirm index corruption"
+        }
+       ],
+       "summary": "Investigating whether the vector database index is corrupted, which would explain wrong answers on replicas 2 and 3, while replica-1's English-only failures may be a separate template issue."
+      }
+     },
+     {
+      "step": 46,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "Arabic retrieval"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-1's Arabic canary failures are limited to specific templates or if they are all wrong, to confirm template issue."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-2",
+          "contains": "Arabic retrieval"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if replica-2's Arabic canary failures are consistent with index corruption (all wrong) or if they vary, to confirm index corruption."
+        }
+       ],
+       "summary": "Investigating whether replica-1's English-only failures are due to a template issue and whether replica-2 and replica-3's shared failures are due to index corruption, while the rack-b power failure is already escalated."
+      }
+     },
+     {
+      "step": 46,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-3",
+          "contains": "docs-ack-en"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if replica-3 also fails English retrieval canaries to confirm index corruption pattern"
+        }
+       ],
+       "summary": "Investigating whether replica-3 shows the same English retrieval failures as replica-2 to confirm index corruption hypothesis."
+      }
+     },
+     {
+      "step": 48,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1",
+          "vectordb log: segment 7 checksum mismatch; serving cached segment"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "English retrieval"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-1's English failures are isolated to specific documents, to confirm template issue or point to another cause."
+        },
+        {
+         "action": "failover_vectordb",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Switch to standby vectordb to see if checksum mismatch is causing wrong answers on replicas 2 and 3."
+        }
+       ],
+       "summary": "Power failure on rack-b took down gpu-4/5/6 (escalated); vectordb index corruption suspected for wrong answers on replicas 2 and 3 (failover to test); replica-1's English-only failures need more investigation."
+      }
+     },
+     {
+      "step": 138,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "explains": [],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "explains": [],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1",
+          "vectordb log: segment 7 checksum mismatch; serving cached segment"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 138 req/s, 1.13x normal",
+          "replica-4 down, losing 25% capacity",
+          "all remaining replicas show p95 latency ~5.6-5.7s vs fleet normal 3.6s",
+          "gateway p95 5563ms vs normal 3600ms"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "replica-4 is down due to power failure, reducing capacity; traffic is above normal and all remaining replicas are slow. Adding replicas on spare nodes (gpu-5, gpu-6) will restore capacity and relieve overload."
+        }
+       ],
+       "summary": "Power failure in rack-b took down replica-4 and spare nodes; adding capacity on remaining spares to relieve overload while awaiting hardware fix."
+      }
+     },
+     {
+      "step": 140,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "down:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1",
+          "vectordb log: segment 7 checksum mismatch; serving cached segment"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 144 req/s, 1.18x normal",
+          "replica-4 down, losing 25% capacity",
+          "all remaining replicas show p95 latency ~6.3-6.4s vs fleet normal 3.6s",
+          "gateway p95 6462ms vs normal 3600ms",
+          "scale_out failed: no spare GPU node to scale onto"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "Rack-b power failure (PSU fault) has taken down gpu-4, gpu-5, gpu-6, losing replica-4 and all spare nodes. Remaining replicas (1-3) are overloaded (1.18x traffic, 25% capacity loss) causing high latency. Need hardware repair or additional capacity."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Power failure is not fixable by software actions; need hardware team to repair PSU on rack-b."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-1",
+          "weight": 0.0
+         },
+         "hypothesis": "H2",
+         "purpose": "experiment",
+         "why": "Temporarily remove replica-1 from traffic to see if it is causing wrong answers and to reduce load on the remaining replicas."
+        }
+       ],
+       "summary": "Rack-b power failure has caused loss of replica-4 and all spare nodes, leading to overload on remaining replicas; escalating for hardware repair and temporarily removing replica-1 to investigate its wrong answers."
+      }
+     },
+     {
+      "step": 152,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1",
+          "vectordb log: segment 7 checksum mismatch; serving cached segment"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 140 req/s, 1.14x normal",
+          "replica-4 down, losing 25% capacity",
+          "all remaining replicas show p95 latency ~36-37s vs fleet normal 3.6s",
+          "gateway p95 36565ms vs normal 3600ms",
+          "scale_out failed: no spare GPU node to scale onto",
+          "queue backlog 4324 requests, oldest waiting 15s",
+          "gateway upstream timeout after 30000ms"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "Rack-b power failure (PSU fault) has taken down gpu-4, gpu-5, gpu-6, losing replica-4 and all spare nodes. Remaining replicas (1-3) are overloaded (1.14x traffic, 25% capacity loss) causing high latency and queue backlog. Need hardware repair or additional capacity."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Power failure is not fixable by us; already escalated but still open, re-escalate to emphasize urgency as overload worsens."
+        }
+       ],
+       "summary": "Rack-b power failure (H1) has removed replica-4 and all spare nodes, causing overload (H4) on remaining replicas with high latency and queue backlog; re-escalating to infrastructure for hardware repair."
+      }
+     },
+     {
+      "step": 154,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-4",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "unreachable:gpu-4",
+       "unreachable:gpu-5",
+       "unreachable:gpu-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-4",
+          "gpu-5",
+          "gpu-6"
+         ],
+         "setting": null,
+         "explains": [
+          "down:replica-4",
+          "unreachable:gpu-4",
+          "unreachable:gpu-5",
+          "unreachable:gpu-6"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-b for gpu-4, gpu-5, gpu-6",
+          "All affected GPUs are in rack-b and send no telemetry (temp/clock 0)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_config",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-1 answers English retrieval canary wrongly (4/9) but Arabic fine (3/36 wrong)",
+          "replica-1 uses template=chat-tpl-12, same as healthy replicas-2,3",
+          "replica-1 is on gpu-1 (rack-a), not affected by rack-b power failure",
+          "replica-2 (same template) also fails English retrieval canaries: docs-ack-en, docs-drain-en, docs-retention-en wrong"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-2 and replica-3 both fail Arabic and English retrieval canaries",
+          "replica-2 and replica-3 share the same vectordb (primary)",
+          "replica-1 also fails English retrieval canaries, but Arabic is fine (3/36 wrong) – suggests a different issue for replica-1",
+          "vectordb log: segment 7 checksum mismatch; serving cached segment"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 140 req/s, 1.14x normal",
+          "replica-4 down, losing 25% capacity",
+          "all remaining replicas show p95 latency ~36-37s vs fleet normal 3.6s",
+          "gateway p95 36565ms vs normal 3600ms",
+          "scale_out failed: no spare GPU node to scale onto",
+          "queue backlog 4324 requests, oldest waiting 15s"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "Rack-b power failure (PSU fault) has taken down gpu-4, gpu-5, gpu-6, losing replica-4 and all spare nodes. Remaining replicas (1-3) are overloaded (1.13x traffic, 25% capacity loss) causing high latency and queue backlog. Need hardware repair or additional capacity."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Hardware power failure is not fixable by software; already escalated, but reiterate to ensure attention."
+        }
+       ],
+       "summary": "Rack-b power failure has removed replica-4 and all spare nodes, leaving replicas 1-3 overloaded; escalating to infrastructure for hardware repair or capacity."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 40,
+      "team": "infrastructure-hardware",
+      "summary": "Rack-b experiencing PSU faults affecting gpu-4, gpu-5, and gpu-6. All three nodes are unreachable with zero telemetry. Immediate hardware intervention required.",
+      "hypothesis": "H1",
+      "automatic": false
+     },
+     {
+      "step": 156,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, down:replica-4, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, unreachable:gpu-4, unreachable:gpu-5, unreachable:gpu-6. Ledger: H1 power_failure  on ['gpu-4', 'gpu-5', 'gpu-6'] [escalated]; H2 bad_config  on ['replica-1'] [ruled_out]; H3 index_corruption  on ['vectordb'] [fixed]; H4 overload  on ['gateway', 'replica-1', 'replica-2', 'replica-3'] [suspected]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 11 symptoms open"
+   }
+  ],
+  "cost": 0.006551446699999999,
+  "calls": 25,
+  "tokens_in": 52502,
+  "tokens_out": 13243
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "rack_power",
+   "step": 34,
+   "target": [
+    "rack-b"
+   ],
+   "cause": "power supply fault on rack-b",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "data-centre facilities team",
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "index_corruption",
+   "step": 42,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": []
+}

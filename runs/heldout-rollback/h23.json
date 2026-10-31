@@ -1,0 +1,313 @@
+{
+ "score": {
+  "scenario": "h23",
+  "faults": 4,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "bad_gateway_timeout",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "bad_template",
+    "target": [
+     "replica-1",
+     "replica-2"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": null,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": [
+   {
+    "step": 80,
+    "team": "on-call engineer",
+    "summary": "still broken",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "opened": 44,
+    "actions": [
+     {
+      "step": 44,
+      "action": "rollback",
+      "args": {
+       "key": "timeout_ms"
+      },
+      "ran": true,
+      "result": "gateway timeout_ms 800 -> 30000"
+     },
+     {
+      "step": 56,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "ran": true,
+      "result": "rolled back memory_limit_gb on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 68,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-1",
+        "replica-2"
+       ]
+      },
+      "ran": true,
+      "result": "rolled back template on ['replica-1', 'replica-2']"
+     }
+    ],
+    "escalations": [
+     {
+      "step": 80,
+      "team": "on-call engineer",
+      "summary": "still broken",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "rounds": 3,
+    "approvals": 0
+   }
+  ],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "index_corruption",
+   "step": 38,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_gateway_timeout",
+   "step": 40,
+   "target": [
+    "gateway"
+   ],
+   "cause": "gateway timeout_ms cut to 800",
+   "fix": "rollback:timeout_ms",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "bad_template",
+   "step": 46,
+   "target": [
+    "replica-1",
+    "replica-2"
+   ],
+   "cause": "template chat-tpl-13 deployed to replica-1, replica-2",
+   "fix": "rollback:template",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f5",
+   "kind": "low_memory_limit",
+   "step": 51,
+   "target": [],
+   "cause": "memory_limit_gb 40 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "gateway",
+   "key": "timeout_ms",
+   "old": 30000,
+   "new": 800,
+   "scope": [
+    "gateway"
+   ],
+   "author": "jsmith",
+   "ticket": "OPS-118",
+   "note": "tighten timeout to protect upstream"
+  },
+  {
+   "step": 44,
+   "time": "2026-10-30T09:07:20",
+   "component": "gateway",
+   "key": "timeout_ms",
+   "old": 800,
+   "new": 30000,
+   "scope": [
+    "gateway"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 46,
+   "time": "2026-10-30T09:07:40",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-1",
+    "replica-2"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "chat template refresh"
+  },
+  {
+   "step": 51,
+   "time": "2026-10-30T09:08:30",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 56,
+   "time": "2026-10-30T09:09:20",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 68,
+   "time": "2026-10-30T09:11:20",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-13",
+   "new": "chat-tpl-12",
+   "scope": [
+    "replica-1",
+    "replica-2"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

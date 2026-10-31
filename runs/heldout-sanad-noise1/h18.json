@@ -1,0 +1,713 @@
+{
+ "score": {
+  "scenario": "h18",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 510,
+  "causes": [
+   {
+    "fault": "gpu_thermal",
+    "target": [
+     "gpu-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": true,
+  "over_escalated": 0,
+  "changes": 5,
+  "unneeded_changes": 2,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 1,
+  "model_calls": 4,
+  "strong_calls": 2,
+  "cost": 0.000458,
+  "tokens_in": 144545,
+  "tokens_out": 33095,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "hot:gpu-3",
+     "slow:gateway",
+     "slow:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "gateway"
+      ],
+      "setting": "log_level",
+      "explains": [
+       "slow:gateway"
+      ],
+      "evidence": [
+       "Change log step 34: gateway log_level changed to debug.",
+       "Debug logging adds significant overhead per request, explaining the high p95 latency at the gateway."
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 40 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-3"
+      ],
+      "setting": null,
+      "explains": [
+       "hot:gpu-3",
+       "slow:replica-3"
+      ],
+      "evidence": [
+       "gpu-3 temperature is 91 C (above 80 C threshold).",
+       "gpu-3 clock speed is throttled to 892 MHz (normal 1980 MHz).",
+       "replica-3 latency is significantly higher than fleet normal, consistent with GPU throttling."
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 40 drain -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "log_level",
+       "replicas": []
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Revert gateway log level from debug to info to reduce processing overhead and fix gateway latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "log_level",
+       "component": [
+        "gateway"
+       ]
+      },
+      "result": "gateway log_level debug -> info",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "slow:gateway"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-3"
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Drain gpu-3 to move replica-3 to a healthy node, mitigating the overheating and throttling issue.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-3"
+       ]
+      },
+      "result": "replica-3 moving gpu-3 -> gpu-5; gpu-3 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "hot:gpu-3",
+        "slow:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "hot:gpu-3",
+       "slow:gateway",
+       "slow:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "log_level",
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "Change log step 34: gateway log_level changed to debug.",
+          "Debug logging adds significant overhead per request, explaining the high p95 latency at the gateway."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-3",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "gpu-3 temperature is 91 C (above 80 C threshold).",
+          "gpu-3 clock speed is throttled to 892 MHz (normal 1980 MHz).",
+          "replica-3 latency is significantly higher than fleet normal, consistent with GPU throttling."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "log_level",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Revert gateway log level from debug to info to reduce processing overhead and fix gateway latency."
+        },
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-3"
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Drain gpu-3 to move replica-3 to a healthy node, mitigating the overheating and throttling issue."
+        }
+       ],
+       "summary": "Rolled back gateway log level to fix slow gateway; drained gpu-3 to mitigate overheating and slow replica-3."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 52,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 78,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "stalled:workers",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "errors:gateway"
+      ],
+      "evidence": [
+       "workers max_concurrency changed 64 -> 4 at step 75",
+       "workers dispatching 16 req/s (normal 179)",
+       "queue backlog 5027, oldest waiting 72s",
+       "gateway timeouts after 30000ms",
+       "all replicas slow, incoming traffic only 1.07x normal"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 78 restart -> not_fixed",
+       "step 88 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "workers max_concurrency changed 64 -> 4 at step 75",
+       "rollback to 64 performed at step 88",
+       "incoming traffic 132 req/s (1.07x normal)",
+       "all replicas slow despite rollback, indicating queue backlog is still draining slowly or capacity is insufficient for current load"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 96 scale_out -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 78,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Workers concurrency was cut to 4, causing severe bottleneck; restart workers to apply a fresh state, though the config change may need rollback if restart doesn't help.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "bad_config",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "worker pool restarting",
+      "verified": {
+       "step": 88,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4",
+        "stalled:workers"
+       ]
+      }
+     },
+     {
+      "step": 88,
+      "action": "rollback",
+      "args": {
+       "key": "max_concurrency",
+       "replicas": []
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "max_concurrency was reduced to 4 at step 75, throttling workers and causing queue backlog and timeouts; restore to 64 to clear the bottleneck.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "workers max_concurrency 4 -> 64",
+      "verified": {
+       "step": 96,
+       "cleared": [
+        "errors:gateway",
+        "stalled:workers"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 96,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Rollback restored concurrency but the queue backlog (1627 requests) is large and incoming traffic is sustained. The single worker pool may be overwhelmed by the backlog drain. Adding more workers increases throughput to clear the backlog faster.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "added ['replica-5']",
+      "verified": {
+       "step": 106,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 78,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "backlog:queue",
+          "stalled:workers",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64 -> 4 at step 75",
+          "workers dispatching 16 req/s (normal 179)",
+          "queue backlog 2328, oldest waiting 72s",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, incoming traffic only 1.08x normal"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "workers"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Workers concurrency was cut to 4, causing severe bottleneck; restart workers to apply a fresh state, though the config change may need rollback if restart doesn't help."
+        }
+       ],
+       "summary": "Workers max_concurrency was reduced to 4, throttling throughput and causing queue backlog, gateway timeouts, and slow replicas; restarting workers to see if it recovers."
+      }
+     },
+     {
+      "step": 88,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "backlog:queue",
+          "stalled:workers",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64 -> 4 at step 75",
+          "workers dispatching 16 req/s (normal 179)",
+          "queue backlog 5027, oldest waiting 72s",
+          "gateway timeouts after 30000ms",
+          "all replicas slow, incoming traffic only 1.07x normal"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "max_concurrency",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "max_concurrency was reduced to 4 at step 75, throttling workers and causing queue backlog and timeouts; restore to 64 to clear the bottleneck."
+        }
+       ],
+       "summary": "Rolling back workers max_concurrency from 4 to 64 to restore throughput and clear the queue backlog and timeouts."
+      }
+     },
+     {
+      "step": 96,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency changed 64 -> 4 at step 75",
+          "rollback to 64 performed at step 88",
+          "incoming traffic 132 req/s (1.07x normal)",
+          "all replicas slow despite rollback, indicating queue backlog is still draining slowly or capacity is insufficient for current load"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback restored concurrency but the queue backlog (1627 requests) is large and incoming traffic is sustained. The single worker pool may be overwhelmed by the backlog drain. Adding more workers increases throughput to clear the backlog faster."
+        }
+       ],
+       "summary": "The workers max_concurrency was rolled back to 64, but the large queue backlog and sustained traffic suggest we need additional worker capacity to clear the queue efficiently."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 3,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 108,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.016970954400000002,
+  "calls": 67,
+  "tokens_in": 144545,
+  "tokens_out": 33095
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "gpu_thermal",
+   "step": 37,
+   "target": [
+    "gpu-3"
+   ],
+   "cause": "gpu-3 fan failure: thermal throttling",
+   "fix": "drain:gpu-3",
+   "fixable": true,
+   "needs_human": "replace the fan on the node",
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_worker_concurrency",
+   "step": 75,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "debug",
+   "new": "info",
+   "scope": [
+    "gateway"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 75,
+   "time": "2026-10-30T09:12:30",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  },
+  {
+   "step": 88,
+   "time": "2026-10-30T09:14:40",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 4,
+   "new": 64,
+   "scope": [
+    "workers"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

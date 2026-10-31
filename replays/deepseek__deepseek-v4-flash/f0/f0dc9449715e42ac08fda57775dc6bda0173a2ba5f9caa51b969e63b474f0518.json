@@ -1,0 +1,125 @@
+{
+ "model": "deepseek/deepseek-v4-flash",
+ "request": {
+  "model": "deepseek/deepseek-v4-flash",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Sanad, the on-call agent for an AI serving platform that answers users in Arabic and English.\nRequests flow: gateway -> identity-service (owned by the identity team, not you) -> queue -> workers -> model replicas (one per GPU node) -> vector database.\n\nEach turn you get the open symptoms (found by monitoring code), the evidence, your ledger of hypotheses, and what your last actions did. Monitoring code, not you, decides whether a fix worked.\n\nHow to work:\n- Several causes can be active at once. Keep one hypothesis per cause. Every open symptom must appear in `explains` of a hypothesis that is not ruled_out.\n- Back each hypothesis with concrete evidence: a metric, a log line, a change log entry, a canary answer.\n- The most recent change is not always the cause. A change can only explain symptoms on what it touched, starting after it was made.\n- Canary questions are asked of each replica separately. If only replicas with a certain setting answer wrongly, suspect that setting. If every replica fails the same kind of question, suspect what they share, such as the vector database. If one replica fails while its settings match healthy ones, suspect its GPU node.\n- Restarting does not undo a bad deploy; rolling back does. Roll back only the replicas that carry the bad value.\n- Overload: when incoming traffic is well above normal and every replica is slow or the queue backs up, add capacity with scale_out. set_weight only moves load between replicas; it adds none.\n- A replica that crashed (segfault, non-zero exit) while its node shows no hardware trouble (no ECC errors, normal temperature) needs a restart. Drain a node only when the node itself shows hardware trouble.\n- A symptom that follows from a cause already in your ledger (for example, lost capacity after hardware went down) belongs in that hypothesis's explains, not in a new cause.\n- Change only what the evidence points at. Leave healthy components alone.\n- Some causes are not yours to fix: another team's service, hardware that needs hands, power. Mitigate what you safely can, then escalate with a clear summary.\n- If a fix did not clear its symptoms, revise the hypothesis rather than repeat the fix.\n\nActions (one to three per turn):\n- rollback {\"key\": setting, \"replicas\": [...]} returns a setting to its previous value. Replica settings: model_version, template, quantization, tokenizer, server_build, memory_limit_gb (give \"replicas\"). Gateway: timeout_ms, log_level. Workers: max_concurrency (no \"replicas\").\n- restart {\"target\": \"replica-N\" or \"workers\"}\n- drain {\"node\": \"gpu-N\"} moves that node's replica to a spare node and takes the node out of service.\n- set_weight {\"replica\": \"replica-N\", \"weight\": 0 to 1} sends less or no traffic to a replica. Undoable.\n- scale_out {\"count\": 1 or 2} adds replicas on spare nodes.\n- failover_vectordb {} switches to the standby vector database.\n- rebuild_index {} rebuilds the active vector index (about 200 s).\n- escalate {\"team\": \"...\", \"summary\": \"...\"} hands a cause to people.\n- inspect {\"what\": \"logs\" or \"metrics\" or \"canaries\", \"component\": \"...\", \"contains\": \"...\"} reads more and changes nothing.\n- wait {} changes nothing.\n\nReply with JSON only:\n{\"ledger\": [{\"id\": \"H1\", \"type\": TYPE, \"component\": [\"...\"], \"setting\": \"setting key or null\", \"explains\": [\"symptom keys\"], \"evidence\": [\"short facts\"], \"status\": \"suspected\" or \"ruled_out\", \"confidence\": 0.0 to 1.0}],\n \"actions\": [{\"action\": \"...\", \"args\": {}, \"hypothesis\": \"H1\", \"purpose\": \"fix\" or \"experiment\" or \"investigate\" or \"escalate\", \"why\": \"short reason\"}],\n \"summary\": \"one sentence\"}\nTYPE is one of: bad_release, bad_config, crash, deadlock, overload, gpu_overheating, gpu_silent_corruption, index_corruption, external_dependency, power_failure, unknown."
+   },
+   {
+    "role": "user",
+    "content": "STEP 78. Incident opened at step 42. Each step is 10 seconds.\n\nOPEN SYMPTOMS\n- backlog:queue: 5028 requests waiting (normal 0)\n- drops:queue: queue full: dropped 843 requests in the last 3 steps\n- errors:gateway: error rate 27.0% (normal 0.08%)\n- slow:gateway: p95 latency 31927 ms (normal 3639 ms)\n- slow:replica-1: replica-1 p95 latency 31608 ms (fleet normal 3622 ms)\n- slow:replica-2: replica-2 p95 latency 31888 ms (fleet normal 3622 ms)\n- slow:replica-3: replica-3 p95 latency 31486 ms (fleet normal 3622 ms)\n- slow:replica-4: replica-4 p95 latency 31295 ms (fleet normal 3622 ms)\n\nYOUR LEDGER\n- H1 index_corruption setting=None on ['vectordb'] status=fixed explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['All 4 replicas answered wrongly before rebuild.', \"Log showed 'segment 7 checksum mismatch' at step 38.\", 'Rebuild completed at step 61 with checksums verified.'] history=['step 42 rebuild_index -> fixed']\n- H2 bad_config setting=None on ['workers'] status=partly_fixed explains=['backlog:queue', 'drops:queue', 'errors:gateway', 'slow:gateway', 'slow:replica-1', 'slow:replica-2', 'slow:replica-3', 'slow:replica-4', 'stalled:workers'] evidence=['max_concurrency changed 64 -> 4 at step 47.', 'Workers dispatching only 16 req/s (normal 179).', 'Queue backlog 4974, drops 5845, gateway 100% errors and p95 321s.', 'All replicas slow with p95 ~300s, consistent with queue starvation.'] history=['step 70 rollback -> partly_fixed']\n- H3 bad_config setting=max_concurrency on ['workers'] status=suspected explains=['backlog:queue', 'drops:queue', 'errors:gateway', 'slow:gateway', 'slow:replica-1', 'slow:replica-2', 'slow:replica-3', 'slow:replica-4'] evidence=['max_concurrency changed 64 -> 4 at step 47.', 'Workers dispatching only 16 req/s (normal 179).', 'Queue backlog 4974, drops 5845, gateway 100% errors and p95 321s.', 'All replicas slow with p95 ~300s, consistent with queue starvation.']\n\nYOUR RECENT ACTIONS\n- step 70 rollback {\"key\": \"max_concurrency\", \"replicas\": []} for H2: workers max_concurrency 4 -> 64; checked at step 78: cleared ['stalled:workers'], still open ['backlog:queue', 'drops:queue', 'errors:gateway', 'slow:gateway', 'slow:replica-1', 'slow:replica-2', 'slow:replica-3', 'slow:replica-4']\n\nWHAT YOU INSPECTED\nmetrics workers (last 8 steps):\n  workers.dispatch_rps: [178.356, 183.042, 181.187, 181.81, 180.014, 183.857, 175.737, 180.328]\n\nPLATFORM\npath: gateway -> identity-service (external, owned by identity team) -> queue -> workers -> replicas -> vectordb\nreplica-1: node gpu-1, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-2: node gpu-2, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-3: node gpu-3, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-4: node gpu-4, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nnodes: gpu-1 rack-a, gpu-2 rack-a, gpu-3 rack-a, gpu-4 rack-b, gpu-5 rack-b, gpu-6 rack-b; spare: gpu-5, gpu-6\ngateway: {'timeout_ms': 30000, 'log_level': 'info'}; workers: {'max_concurrency': 64, 'count': 8}; vectordb: {'active': 'primary', 'rebuilding': False}\nincoming traffic: 209 req/s, 1.70x normal\n\nCHANGE LOG (newest last)\nstep 47 09:07:50: workers max_concurrency 64 -> 4 on workers by ops-bot (OPS-131: reduce concurrency during db migration)\nstep 70 09:11:40: workers max_concurrency 4 -> 64 on workers by you (Sanad) (INC: rollback)\n\nLOG LINES NOT SEEN BEFORE THE INCIDENT (since step 36; count, first step, example)\n1x from step 38 WARN vectordb: segment 7 checksum mismatch; serving cached segment\n31x from step 47 ERROR gateway: upstream timeout after 30000ms\n31x from step 47 WARN queue: backlog 2515 requests, oldest waiting 157s\n1x from step 61 INFO vectordb: index rebuild complete, segment checksums verified\n\nALLOWANCE LEFT: 8 turns, 8 changes. Mode: autonomous."
+   }
+  ],
+  "temperature": 0,
+  "max_tokens": 1500,
+  "response_format": {
+   "type": "json_object"
+  },
+  "reasoning": {
+   "enabled": false
+  },
+  "usage": {
+   "include": true
+  }
+ },
+ "text": "{\n  \"ledger\": [\n    {\n      \"id\": \"H1\",\n      \"type\": \"index_corruption\",\n      \"component\": [\"vectordb\"],\n      \"setting\": null,\n      \"explains\": [],\n      \"evidence\": [\n        \"All 4 replicas answered wrongly before rebuild.\",\n        \"Log showed 'segment 7 checksum mismatch' at step 38.\",\n        \"Rebuild completed at step 61 with checksums verified.\"\n      ],\n      \"status\": \"fixed\",\n      \"confidence\": 1.0\n    },\n    {\n      \"id\": \"H2\",\n      \"type\": \"bad_config\",\n      \"component\": [\"workers\"],\n      \"setting\": null,\n      \"evidence\": [\n        \"max_concurrency changed 64 -> 4 at step 47.\",\n        \"Workers dispatching only 16 req/s (normal 179).\",\n        \"Queue backlog 4974, drops 5845, gateway 100% errors and p95 321s.\",\n        \"All replicas slow with p95 ~300s, consistent with queue starvation.\"\n      ],\n      \"explains\": [],\n      \"status\": \"partly_fixed\",\n      \"confidence\": 1.0\n    },\n    {\n      \"id\": \"H3\",\n      \"type\": \"bad_config\",\n      \"component\": [\"workers\"],\n      \"setting\": \"max_concurrency\",\n      \"evidence\": [\n        \"max_concurrency changed 64 -> 4 at step 47.\",\n        \"Workers dispatching only 16 req/s (normal 179).\",\n        \"Queue backlog 4974, drops 5845, gateway 100% errors and p95 321s.\",\n        \"All replicas slow with p95 ~300s, consistent with queue starvation.\"\n      ],\n      \"explains\": [\n        \"backlog:queue\",\n        \"drops:queue\",\n        \"errors:gateway\",\n        \"slow:gateway\",\n        \"slow:replica-1\",\n        \"slow:replica-2\",\n        \"slow:replica-3\",\n        \"slow:replica-4\"\n      ],\n      \"status\": \"suspected\",\n      \"confidence\": 0.9\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"wait\",\n      \"args\": {},\n      \"hypothesis\": \"H3\",\n      \"purpose\": \"experiment\",\n      \"why\": \"Rollback of max_concurrency to 64 was done at step 70; workers dispatch rate is now normal (180 req/s) but queue backlog and drops persist. Wait for workers to drain the backlog before concluding the fix is insufficient.\"\n    }\n  ],\n  \"summary\": \"Rolled back max_concurrency to 64; workers dispatch rate recovered to normal, but queue backlog and drops remain; waiting for backlog to drain.\"\n}",
+ "reply": {
+  "ledger": [
+   {
+    "id": "H1",
+    "type": "index_corruption",
+    "component": [
+     "vectordb"
+    ],
+    "setting": null,
+    "explains": [],
+    "evidence": [
+     "All 4 replicas answered wrongly before rebuild.",
+     "Log showed 'segment 7 checksum mismatch' at step 38.",
+     "Rebuild completed at step 61 with checksums verified."
+    ],
+    "status": "fixed",
+    "confidence": 1.0
+   },
+   {
+    "id": "H2",
+    "type": "bad_config",
+    "component": [
+     "workers"
+    ],
+    "setting": null,
+    "evidence": [
+     "max_concurrency changed 64 -> 4 at step 47.",
+     "Workers dispatching only 16 req/s (normal 179).",
+     "Queue backlog 4974, drops 5845, gateway 100% errors and p95 321s.",
+     "All replicas slow with p95 ~300s, consistent with queue starvation."
+    ],
+    "explains": [],
+    "status": "partly_fixed",
+    "confidence": 1.0
+   },
+   {
+    "id": "H3",
+    "type": "bad_config",
+    "component": [
+     "workers"
+    ],
+    "setting": "max_concurrency",
+    "evidence": [
+     "max_concurrency changed 64 -> 4 at step 47.",
+     "Workers dispatching only 16 req/s (normal 179).",
+     "Queue backlog 4974, drops 5845, gateway 100% errors and p95 321s.",
+     "All replicas slow with p95 ~300s, consistent with queue starvation."
+    ],
+    "explains": [
+     "backlog:queue",
+     "drops:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4"
+    ],
+    "status": "suspected",
+    "confidence": 0.9
+   }
+  ],
+  "actions": [
+   {
+    "action": "wait",
+    "args": {},
+    "hypothesis": "H3",
+    "purpose": "experiment",
+    "why": "Rollback of max_concurrency to 64 was done at step 70; workers dispatch rate is now normal (180 req/s) but queue backlog and drops persist. Wait for workers to drain the backlog before concluding the fix is insufficient."
+   }
+  ],
+  "summary": "Rolled back max_concurrency to 64; workers dispatch rate recovered to normal, but queue backlog and drops remain; waiting for backlog to drain."
+ },
+ "usage": {
+  "prompt_tokens": 2393,
+  "completion_tokens": 600,
+  "total_tokens": 2993,
+  "cost": 0.00038965,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.00038965,
+   "upstream_inference_prompt_cost": 0.00011965,
+   "upstream_inference_completions_cost": 0.00027
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ },
+ "cost": 0.00038965
+}

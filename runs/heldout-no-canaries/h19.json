@@ -1,0 +1,1589 @@
+{
+ "score": {
+  "scenario": "h19",
+  "faults": 3,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 130,
+  "recover_seconds": 650,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 4,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 1,
+  "model_calls": 12,
+  "strong_calls": 12,
+  "cost": 0.004078,
+  "tokens_in": 124983,
+  "tokens_out": 29512,
+  "escalations": [
+   {
+    "step": 110,
+    "team": "infra",
+    "summary": "No spare GPU nodes to scale out. Incoming traffic is 1.78x normal, all 6 replicas are overloaded (p95 ~8.8s). Need additional capacity or traffic shaping.",
+    "hypothesis": "H3",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 50,
+    "first_symptoms": [
+     "backlog:queue",
+     "drops:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "workers max_concurrency reduced from 64 to 4 at step 47",
+       "queue backlog started at step 47",
+       "gateway timeouts started at step 47",
+       "workers dispatching only 16 req/s (normal 179)",
+       "all replicas slow while settings identical and nodes healthy",
+       "incoming traffic 1.78x normal but not extreme"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 50 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "vectordb segment 7 checksum mismatch at step 56",
+       "index rebuild completed at step 89 but symptoms unchanged",
+       "failover_vectordb did not fix"
+      ],
+      "confidence": 1.0,
+      "attempts": 2,
+      "history": [
+       "step 58 failover_vectordb -> not_fixed",
+       "step 70 rebuild_index -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "evidence": [
+       "incoming traffic 219 req/s (1.78x normal)",
+       "queue backlog 1349 requests (normal 0)",
+       "all replicas slow (p95 ~8.8s vs normal 3.6s)",
+       "gateway p95 latency 8.8s (normal 3.6s)",
+       "workers max_concurrency now 64 (normal)",
+       "scale_out added 2 replicas but all still slow"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [
+       "step 98 scale_out -> partly_fixed"
+      ],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 50,
+      "action": "rollback",
+      "args": {
+       "key": "max_concurrency",
+       "replicas": []
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "max_concurrency was reduced from 64 to 4 at step 47, causing workers to stall, queue to backlog, and all replicas to time out. Rolling back to 64 should restore throughput.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "max_concurrency",
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "workers max_concurrency 4 -> 64",
+      "verified": {
+       "step": 58,
+       "cleared": [
+        "stalled:workers"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "drops:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 58,
+      "action": "failover_vectordb",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "vectordb checksum mismatch suggests index corruption; failover to standby to restore service",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "vectordb primary -> standby",
+      "verified": {
+       "step": 66,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "drops:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "vectordb standby -> primary"
+     },
+     {
+      "step": 70,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "failover_vectordb did not clear symptoms; the standby may also have the same corruption. Rebuilding the index should fix the checksum mismatch and restore normal replica latency.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 98,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "drops:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 98,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Traffic is 1.71x normal, all replicas saturated, queue backlog and drops persist. Adding 2 replicas on spare nodes (gpu-5, gpu-6) increases capacity to handle load.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 108,
+       "cleared": [
+        "drops:queue",
+        "errors:gateway"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 108,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "All replicas are slow and queue backlog persists; adding more replicas can increase total throughput to handle the 1.78x traffic.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 110,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "No spare GPU nodes to scale out. Incoming traffic is 1.78x normal, all 6 replicas are overloaded (p95 ~8.8s). Need additional capacity or traffic shaping."
+      },
+      "hypothesis": "H3",
+      "purpose": "escalate",
+      "why": "scale_out failed due to no spare nodes; overload cannot be resolved with current resources.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "handed to infra"
+     }
+    ],
+    "turns": [
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47 (2517 requests, oldest 157s)",
+          "gateway timeouts started at step 47 (upstream timeout after 30000ms)",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow (p95 ~250s) while settings identical and nodes healthy",
+          "incoming traffic 1.64x normal but not extreme"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "max_concurrency",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "max_concurrency was reduced from 64 to 4 at step 47, causing workers to stall, queue to backlog, and all replicas to time out. Rolling back to 64 should restore throughput."
+        }
+       ],
+       "summary": "Workers max_concurrency was cut from 64 to 4 at step 47, throttling dispatch to 16 req/s, causing queue backlog, drops, gateway timeouts, and all replicas slow; rolling back to 64."
+      }
+     },
+     {
+      "step": 58,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47 (2517 requests, oldest 157s)",
+          "gateway timeouts started at step 47 (upstream timeout after 30000ms)",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow (p95 ~250s) while settings identical and nodes healthy",
+          "incoming traffic 1.64x normal but not extreme",
+          "rollback at step 50 cleared stalled:workers but backlog persists"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch rate"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Check if workers are now dispatching at normal rate after rollback; if not, the concurrency setting may not be the only cause."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "vectordb",
+          "contains": "checksum"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "A vectordb checksum mismatch appeared at step 56; could be causing slow responses and errors if replicas are hitting corrupted segments."
+        }
+       ],
+       "summary": "Rollback of max_concurrency cleared the worker stall but backlog and slowness persist; investigating worker dispatch rate and a vectordb checksum mismatch."
+      }
+     },
+     {
+      "step": 58,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47 (2517 requests, oldest 157s)",
+          "gateway timeouts started at step 47 (upstream timeout after 30000ms)",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow (p95 ~250s) while settings identical and nodes healthy",
+          "incoming traffic 1.64x normal but not extreme",
+          "rollback at step 50 cleared stalled:workers but not other symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "all replicas slow despite identical settings and healthy nodes",
+          "workers dispatch rate normal (~179 rps) but replicas still slow",
+          "queue backlog persists after max_concurrency rollback"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "failover_vectordb",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "vectordb checksum mismatch suggests index corruption; failover to standby to restore service"
+        }
+       ],
+       "summary": "Rollback of max_concurrency did not clear the backlog or slowness; vectordb checksum mismatch points to index corruption, so failing over to the standby vector database."
+      }
+     },
+     {
+      "step": 70,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47 (2517 requests, oldest 157s)",
+          "gateway timeouts started at step 47 (upstream timeout after 30000ms)",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow (p95 ~250s) while settings identical and nodes healthy",
+          "incoming traffic 1.64x normal but not extreme"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "all replicas slow despite identical settings and healthy nodes",
+          "workers dispatch rate normal (~179 rps) but replicas still slow",
+          "queue backlog persists after max_concurrency rollback"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "failover_vectordb did not clear symptoms; the standby may also have the same corruption. Rebuilding the index should fix the checksum mismatch and restore normal replica latency."
+        }
+       ],
+       "summary": "Rebuilding the vector index to fix the checksum mismatch that persists after failover."
+      }
+     },
+     {
+      "step": 98,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47 (2517 requests, oldest 157s)",
+          "gateway timeouts started at step 47 (upstream timeout after 30000ms)",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow (p95 ~250s) while settings identical and nodes healthy",
+          "incoming traffic 1.64x normal but not extreme"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "all replicas slow despite identical settings and healthy nodes",
+          "workers dispatch rate normal (~179 rps) but replicas still slow",
+          "queue backlog persists after max_concurrency rollback"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replicas",
+          "contains": "allam-34b-v2.3"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if all replicas fail the same kind of question, pointing to vectordb, or if only some fail, pointing to a different cause."
+        }
+       ],
+       "summary": "Investigating whether all replicas fail the same canary questions to confirm vectordb as the root cause, since the index rebuild completed but symptoms persist."
+      }
+     },
+     {
+      "step": 98,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47 (2517 requests, oldest 157s)",
+          "gateway timeouts started at step 47 (upstream timeout after 30000ms)",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow (p95 ~250s) while settings identical and nodes healthy",
+          "incoming traffic 1.64x normal but not extreme"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "all replicas slow despite identical settings and healthy nodes",
+          "workers dispatch rate normal (~179 rps) but replicas still slow",
+          "queue backlog persists after max_concurrency rollback"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replicas",
+          "contains": "allam-34b-v2.3"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replicas are still using the old index or if the rebuild fixed the issue"
+        }
+       ],
+       "summary": "Index rebuild completed but symptoms persist; inspecting canary answers to verify if the index corruption is resolved."
+      }
+     },
+     {
+      "step": 98,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47 (2517 requests, oldest 157s)",
+          "gateway timeouts started at step 47 (upstream timeout after 30000ms)",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow (p95 ~250s) while settings identical and nodes healthy",
+          "incoming traffic 1.64x normal but not extreme"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "all replicas slow despite identical settings and healthy nodes",
+          "workers dispatch rate normal (~179 rps) but replicas still slow",
+          "queue backlog persists after max_concurrency rollback",
+          "index rebuild completed at step 89 but symptoms unchanged"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 212 req/s (1.71x normal)",
+          "queue backlog 5050 requests (normal 0)",
+          "queue dropping requests (949 in last 3 steps)",
+          "all replicas slow (p95 ~31s vs normal 3.6s)",
+          "gateway p95 latency 30.8s (normal 3.6s)",
+          "workers max_concurrency now 64 (normal)",
+          "vectordb index rebuilt but no improvement"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Traffic is 1.71x normal, all replicas saturated, queue backlog and drops persist. Adding 2 replicas on spare nodes (gpu-5, gpu-6) increases capacity to handle load."
+        }
+       ],
+       "summary": "Traffic 1.71x normal overwhelms 4 replicas; scale out by 2 to add capacity."
+      }
+     },
+     {
+      "step": 108,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47",
+          "gateway timeouts started at step 47",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow while settings identical and nodes healthy",
+          "incoming traffic 1.78x normal but not extreme"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "index rebuild completed at step 89 but symptoms unchanged",
+          "failover_vectordb did not fix"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 219 req/s (1.78x normal)",
+          "queue backlog 2095 requests (normal 0)",
+          "all replicas slow (p95 ~11s vs normal 3.6s)",
+          "gateway p95 latency 11.4s (normal 3.6s)",
+          "workers max_concurrency now 64 (normal)",
+          "scale_out added 2 replicas but all still slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replicas",
+          "contains": "gpu utilization"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if replicas are CPU/GPU bound or if there is a shared bottleneck like vectordb or network."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replicas",
+          "contains": "allam-34b-v2.3"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if all replicas fail the same kind of question, indicating a shared dependency."
+        }
+       ],
+       "summary": "Scaling out did not clear the backlog or latency; investigating whether the bottleneck is shared (vectordb or model) or if replicas are resource-constrained."
+      }
+     },
+     {
+      "step": 108,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47",
+          "gateway timeouts started at step 47",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow while settings identical and nodes healthy",
+          "incoming traffic 1.78x normal but not extreme"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "index rebuild completed at step 89 but symptoms unchanged",
+          "failover_vectordb did not fix"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 219 req/s (1.78x normal)",
+          "queue backlog 2095 requests (normal 0)",
+          "all replicas slow (p95 ~11s vs normal 3.6s)",
+          "gateway p95 latency 11.4s (normal 3.6s)",
+          "workers max_concurrency now 64 (normal)",
+          "scale_out added 2 replicas but all still slow"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replicas",
+          "contains": "allam-34b-v2.3"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "All replicas are slow with identical settings; need to check if the model version or template is causing high latency under load."
+        }
+       ],
+       "summary": "All six replicas are slow with identical settings; scaling out did not fully clear the backlog, so I will inspect canary responses to see if the model or template is the bottleneck."
+      }
+     },
+     {
+      "step": 108,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47",
+          "gateway timeouts started at step 47",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow while settings identical and nodes healthy",
+          "incoming traffic 1.78x normal but not extreme"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "index rebuild completed at step 89 but symptoms unchanged",
+          "failover_vectordb did not fix"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 219 req/s (1.78x normal)",
+          "queue backlog 2095 requests (normal 0)",
+          "all replicas slow (p95 ~11s vs normal 3.6s)",
+          "gateway p95 latency 11.4s (normal 3.6s)",
+          "workers max_concurrency now 64 (normal)",
+          "scale_out added 2 replicas but all still slow"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "All replicas are slow and queue backlog persists; adding more replicas can increase total throughput to handle the 1.78x traffic."
+        }
+       ],
+       "summary": "Scaling out by adding 2 replicas to increase capacity and reduce queue backlog and latency."
+      }
+     },
+     {
+      "step": 110,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47",
+          "gateway timeouts started at step 47",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow while settings identical and nodes healthy",
+          "incoming traffic 1.78x normal but not extreme"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "index rebuild completed at step 89 but symptoms unchanged",
+          "failover_vectordb did not fix"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 219 req/s (1.78x normal)",
+          "queue backlog 1349 requests (normal 0)",
+          "all replicas slow (p95 ~8.8s vs normal 3.6s)",
+          "gateway p95 latency 8.8s (normal 3.6s)",
+          "workers max_concurrency now 64 (normal)",
+          "scale_out added 2 replicas but all still slow",
+          "no spare nodes to scale onto"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replicas",
+          "contains": "allam-34b-v2.3"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if all replicas fail the same kind of question, which would point to a shared component like the vector database, or if only some fail, which would point to a setting or node issue."
+        }
+       ],
+       "summary": "Investigating whether all replicas fail the same canary questions to determine if the root cause is a shared component (vectordb) or a per-replica issue, given that scaling out is not possible due to no spare nodes."
+      }
+     },
+     {
+      "step": 110,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "workers max_concurrency reduced from 64 to 4 at step 47",
+          "queue backlog started at step 47",
+          "gateway timeouts started at step 47",
+          "workers dispatching only 16 req/s (normal 179)",
+          "all replicas slow while settings identical and nodes healthy",
+          "incoming traffic 1.78x normal but not extreme"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch at step 56",
+          "index rebuild completed at step 89 but symptoms unchanged",
+          "failover_vectordb did not fix"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 219 req/s (1.78x normal)",
+          "queue backlog 1349 requests (normal 0)",
+          "all replicas slow (p95 ~8.8s vs normal 3.6s)",
+          "gateway p95 latency 8.8s (normal 3.6s)",
+          "workers max_concurrency now 64 (normal)",
+          "scale_out added 2 replicas but all still slow"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "No spare GPU nodes to scale out. Incoming traffic is 1.78x normal, all 6 replicas are overloaded (p95 ~8.8s). Need additional capacity or traffic shaping."
+         },
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "scale_out failed due to no spare nodes; overload cannot be resolved with current resources."
+        }
+       ],
+       "summary": "Escalating overload to infra team: no spare GPU nodes to add capacity, all replicas saturated at 1.78x normal traffic."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 110,
+      "team": "infra",
+      "summary": "No spare GPU nodes to scale out. Incoming traffic is 1.78x normal, all 6 replicas are overloaded (p95 ~8.8s). Need additional capacity or traffic shaping.",
+      "hypothesis": "H3",
+      "automatic": false
+     }
+    ],
+    "changes": 4,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 116,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.013914462,
+  "calls": 58,
+  "tokens_in": 124983,
+  "tokens_out": 29512
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "index_corruption",
+   "step": 37,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 44,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.6x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_worker_concurrency",
+   "step": 47,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 47,
+   "time": "2026-10-30T09:07:50",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  },
+  {
+   "step": 50,
+   "time": "2026-10-30T09:08:20",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 4,
+   "new": 64,
+   "scope": [
+    "workers"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

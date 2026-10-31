@@ -1,0 +1,244 @@
+{
+ "score": {
+  "scenario": "h07",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 30,
+  "causes": [
+   {
+    "fault": "low_memory_limit",
+    "target": [
+     "replica-2"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 0.000224,
+  "tokens_in": 5173,
+  "tokens_out": 756,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "errors:gateway",
+     "restarting:replica-2"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [
+       "restarting:replica-2",
+       "errors:gateway"
+      ],
+      "evidence": [
+       "replica-2 memory_limit_gb changed from 80 to 40 at step 35",
+       "replica-2 OOMKilled at step 35: limit 40GB, need 68GB",
+       "replica-2 restarted 1 time in last 8 steps",
+       "gateway error rate 5.9% (normal 0.07%)"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 38 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-2"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "replica-2 OOMKilled after memory_limit_gb reduced to 40GB; rollback to 80GB to stop restarts and reduce gateway errors",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-2"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-2']",
+      "verified": {
+       "step": 46,
+       "cleared": [
+        "errors:gateway",
+        "restarting:replica-2"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway",
+       "restarting:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-2",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "replica-2 memory_limit_gb changed from 80 to 40 at step 35",
+          "replica-2 OOMKilled at step 35: limit 40GB, need 68GB",
+          "replica-2 restarted 1 time in last 8 steps",
+          "gateway error rate 5.9% (normal 0.07%)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-2"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "replica-2 OOMKilled after memory_limit_gb reduced to 40GB; rollback to 80GB to stop restarts and reduce gateway errors"
+        }
+       ],
+       "summary": "Roll back replica-2 memory_limit_gb from 40 to 80 to fix OOM crashes causing restarts and gateway errors."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 48,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.00039672739999999996,
+  "calls": 3,
+  "tokens_in": 5173,
+  "tokens_out": 756
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "low_memory_limit",
+   "step": 35,
+   "target": [
+    "replica-2"
+   ],
+   "cause": "memory_limit_gb 40 deployed to replica-2",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-2"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-2"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

@@ -1,0 +1,760 @@
+{
+ "score": {
+  "scenario": "h13",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": 170,
+  "causes": [
+   {
+    "fault": "bad_quantization",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 5,
+  "strong_calls": 0,
+  "cost": 0.001995,
+  "tokens_in": 51712,
+  "tokens_out": 11740,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "All replicas changed to int4-awq-unvalidated at step 37",
+       "All replicas show wrong answers in math and format",
+       "Quantization is unvalidated"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "quantization",
+      "explains": [],
+      "evidence": [
+       "All replicas changed to int4-awq-unvalidated at step 37",
+       "All replicas showed wrong answers in math and format",
+       "Quantization is unvalidated"
+      ],
+      "confidence": 0.0,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-2"
+      ],
+      "evidence": [
+       "Incoming traffic 218 req/s (1.78x normal)",
+       "Queue backlog cleared after scale_out",
+       "All replicas except replica-2 have normal p95 latency after scale_out",
+       "replica-2 p95 latency 5448 ms (fleet normal 3631 ms)"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 50 scale_out -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "quantization",
+      "explains": [],
+      "evidence": [
+       "All replicas changed to int4-awq-unvalidated at step 37",
+       "All replicas showed wrong answers in math and format",
+       "Quantization is unvalidated"
+      ],
+      "confidence": 0.0,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "quantization",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "The recent unvalidated int4 quantization on all replicas is the only change and likely causes wrong answers across all replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": null,
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back quantization on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 50,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Traffic is 1.77x normal, all replicas are slow, queue is backing up. Adding two replicas on spare nodes (gpu-5, gpu-6) will increase capacity and reduce load per replica.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 60,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-3",
+        "slow:replica-4"
+       ],
+       "still_open": [
+        "slow:replica-2"
+       ]
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas show wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "quantization",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "The recent unvalidated int4 quantization on all replicas is the only change and likely causes wrong answers across all replicas."
+        }
+       ],
+       "summary": "Rolling back the unvalidated int4 quantization on all replicas to the previous fp8 setting to fix wrong answers."
+      }
+     },
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas showed wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "Incoming traffic 216 req/s (1.77x normal)",
+          "Queue backlog 2149 requests (normal 0)",
+          "All replicas have p95 latency ~15s (fleet normal 3.6s)",
+          "Gateway p95 latency 16.2s (normal 3.68s)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Traffic is 1.77x normal, all replicas are slow, queue is backing up. Adding two replicas on spare nodes (gpu-5, gpu-6) will increase capacity and reduce load per replica."
+        }
+       ],
+       "summary": "Rollback of quantization fixed wrong answers, but all replicas remain slow and queue is backlogged due to 1.77x normal traffic; scaling out by 2 replicas to add capacity."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas showed wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas showed wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "suspected",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "Incoming traffic 218 req/s (1.78x normal)",
+          "Queue backlog cleared after scale_out",
+          "All replicas except replica-2 have normal p95 latency after scale_out",
+          "replica-2 p95 latency 5448 ms (fleet normal 3631 ms)"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-2",
+          "contains": "p95 latency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "replica-2 is the only slow replica after scale_out; check if it has a local issue like high memory or CPU"
+        }
+       ],
+       "summary": "After rolling back quantization and scaling out, only replica-2 remains slow; inspecting its metrics to see if it has a local resource problem."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas show wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "Incoming traffic 218 req/s (1.78x normal)",
+          "Queue backlog cleared after scale_out",
+          "All replicas except replica-2 have normal p95 latency after scale_out",
+          "replica-2 p95 latency 5448 ms (fleet normal 3631 ms)"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas showed wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas showed wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-2",
+          "contains": "gpu_utilization"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "replica-2 is still slow after scale_out; check if its GPU utilization is high, indicating a local bottleneck"
+        }
+       ],
+       "summary": "replica-2 remains slow after scaling out; investigating its GPU utilization to determine if it's a local issue or residual overload."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-2"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas show wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2"
+         ],
+         "evidence": [
+          "Incoming traffic 218 req/s (1.78x normal)",
+          "Queue backlog cleared after scale_out",
+          "All replicas except replica-2 have normal p95 latency after scale_out",
+          "replica-2 p95 latency 5448 ms (fleet normal 3631 ms)"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.8
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas showed wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "suspected",
+         "confidence": 0.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [],
+         "evidence": [
+          "All replicas changed to int4-awq-unvalidated at step 37",
+          "All replicas showed wrong answers in math and format",
+          "Quantization is unvalidated"
+         ],
+         "status": "suspected",
+         "confidence": 0.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-2",
+          "contains": "gpu_utilization"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "replica-2 is slow while others are normal; check if GPU utilization is low or high to distinguish overload from hardware issue"
+        }
+       ],
+       "summary": "Investigating why replica-2 remains slow after scaling out, while other replicas are normal."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 64,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0074536868,
+  "calls": 24,
+  "tokens_in": 51712,
+  "tokens_out": 11740
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_quantization",
+   "step": 37,
+   "target": [],
+   "cause": "quantization int4-awq-unvalidated deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:quantization",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 43,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "fp8",
+   "new": "int4-awq-unvalidated",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "int4 to halve GPU memory"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "int4-awq-unvalidated",
+   "new": "fp8",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

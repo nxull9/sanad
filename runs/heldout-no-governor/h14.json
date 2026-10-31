@@ -1,0 +1,1626 @@
+{
+ "score": {
+  "scenario": "h14",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 13,
+  "strong_calls": 13,
+  "cost": 0.003869,
+  "tokens_in": 100985,
+  "tokens_out": 24908,
+  "escalations": [
+   {
+    "step": 64,
+    "team": "infra",
+    "summary": "Persistent overload: incoming traffic 2.02x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping.",
+    "hypothesis": "H2",
+    "automatic": false
+   },
+   {
+    "step": 196,
+    "team": "identity",
+    "summary": "Gateway error rate 4.0% (normal 0.08%) with upstream timeouts after 30000ms. Identity-service is external and may be slow or failing, contributing to errors. Please investigate and fix.",
+    "hypothesis": "H3",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "restarting:replica-2",
+     "restarting:replica-3",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+       "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+       "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+       "rollback to 80 at step 42"
+      ],
+      "confidence": 0.95,
+      "attempts": 1,
+      "history": [
+       "step 42 rollback -> partly_fixed",
+       "step 50 scale_out -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "evidence": [
+       "incoming traffic 270 req/s, 2.21x normal",
+       "backlog:queue 5060 requests waiting (normal 0)",
+       "drops:queue: 328 requests dropped in the last 3 steps (queue full)",
+       "all replicas show p95 latency >22000 ms, far above fleet normal 3643 ms",
+       "workers.dispatch_rps ~260, consistent with high load",
+       "rollback and scale_out did not clear symptoms, indicating persistent overload"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "gateway error rate 4.0% (normal 0.08%)",
+       "11x from step 41 ERROR gateway: upstream timeout after 30000ms",
+       "identity-service is external, owned by identity team",
+       "all replicas slow but errors are at gateway, suggesting upstream timeouts"
+      ],
+      "confidence": 0.6,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "revert the memory limit from 40 to 80 on replica-2 and replica-3 so they can load the 68GB model without OOM",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-2', 'replica-3']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "restarting:replica-2",
+        "restarting:replica-3"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback restored replicas but capacity is still insufficient for 1.99x traffic; add two replicas on spare nodes to absorb backlog and reduce latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 60,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 60,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Overload persists after rollback and previous scale_out; adding more replicas to handle 2x traffic.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 62,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Persistent overload with no spare nodes; adding capacity is the only way to absorb 2x traffic and clear the backlog.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 64,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Persistent overload: incoming traffic 2.02x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "No spare nodes to scale out; overload cannot be resolved with current resources. Escalating to get more capacity or traffic management.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "handed to infra"
+     },
+     {
+      "step": 186,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Persistent overload: incoming traffic 2.16x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Overload persists after rollback and scale_out; no spare nodes; infra team must add capacity or throttle traffic.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "H2 was already handed to people"
+     },
+     {
+      "step": 188,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Persistent overload: incoming traffic 2.13x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Overload persists despite previous escalations; no spare nodes to scale out, and all replicas are saturated. Infra team must add capacity or implement traffic shaping.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "H2 was already handed to people"
+     },
+     {
+      "step": 190,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Persistent overload: incoming traffic 2.11x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping. Also queue is dropping requests – urgency increased."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Overload still not resolved; no spare capacity to scale out. Escalating again with updated summary.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "H2 was already handed to people"
+     },
+     {
+      "step": 192,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Persistent overload: incoming traffic 2.14x normal, all 6 replicas saturated, no spare nodes to scale out. Queue backlog 4995 and dropping requests. Need additional GPU capacity or traffic shaping urgently."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Overload persists and is already escalated; reinforcing urgency as queue drops continue.",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "H2 was already handed to people"
+     },
+     {
+      "step": 196,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "Gateway error rate 4.0% (normal 0.08%) with upstream timeouts after 30000ms. Identity-service is external and may be slow or failing, contributing to errors. Please investigate and fix."
+      },
+      "hypothesis": "H3",
+      "purpose": "escalate",
+      "why": "Identity-service is not owned by us; errors at gateway suggest upstream timeouts. Escalating to the owning team.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "revert the memory limit from 40 to 80 on replica-2 and replica-3 so they can load the 68GB model without OOM"
+        }
+       ],
+       "summary": "Roll back memory_limit_gb to 80 on replica-2 and replica-3 to fix OOM crashes and the resulting overload symptoms."
+      }
+     },
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback restored replicas but capacity is still insufficient for 1.99x traffic; add two replicas on spare nodes to absorb backlog and reduce latency."
+        }
+       ],
+       "summary": "Rolled back memory limit on replicas 2 and 3, but overload persists; scaling out by two replicas to add capacity."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 254 req/s, 2.08x normal",
+          "backlog:queue 4075 requests waiting (normal 0)",
+          "all replicas show p95 latency >19000 ms, far above fleet normal 3643 ms",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Overload persists after rollback and previous scale_out; adding more replicas to handle 2x traffic."
+        }
+       ],
+       "summary": "Overload from 2x traffic persists; scaling out to add capacity."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-2",
+          "contains": "memory"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Verify replica-2 memory usage after rollback to confirm it is healthy and not still constrained."
+        }
+       ],
+       "summary": "Investigating whether the rolled-back memory limit on replica-2 and replica-3 is now healthy, while overload persists across all replicas."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 254 req/s, 2.08x normal",
+          "backlog:queue 4075 requests waiting (normal 0)",
+          "all replicas show p95 latency >19000 ms, far above fleet normal 3643 ms",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated or if max_concurrency is limiting throughput, causing queue backlog and replica slowness."
+        }
+       ],
+       "summary": "Overload persists with no spare capacity; investigating worker concurrency to see if it is the bottleneck before deciding on mitigation."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 247 req/s, 2.02x normal",
+          "backlog:queue 3860 requests waiting (normal 0)",
+          "all replicas show p95 latency >18500 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Persistent overload with no spare nodes; adding capacity is the only way to absorb 2x traffic and clear the backlog."
+        }
+       ],
+       "summary": "Traffic remains 2x normal and all replicas are saturated; scaling out by 2 replicas to add capacity."
+      }
+     },
+     {
+      "step": 64,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 247 req/s, 2.02x normal",
+          "backlog:queue 3593 requests waiting (normal 0)",
+          "all replicas show p95 latency >17500 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch_rps"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are at max_concurrency and if dispatch_rps matches incoming traffic to confirm overload"
+        }
+       ],
+       "summary": "All replicas are slow and queue is backlogged with 2x normal traffic; no spare nodes to scale out, so investigating worker metrics to confirm overload before escalating."
+      }
+     },
+     {
+      "step": 64,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 247 req/s, 2.02x normal",
+          "backlog:queue 3593 requests waiting (normal 0)",
+          "all replicas show p95 latency >17500 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Persistent overload: incoming traffic 2.02x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "No spare nodes to scale out; overload cannot be resolved with current resources. Escalating to get more capacity or traffic management."
+        }
+       ],
+       "summary": "Overload persists with no spare nodes; escalating for additional capacity or traffic shaping."
+      }
+     },
+     {
+      "step": 186,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 264 req/s, 2.16x normal",
+          "backlog:queue 4893 requests waiting (normal 0)",
+          "all replicas show p95 latency >22000 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Persistent overload: incoming traffic 2.16x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Overload persists after rollback and scale_out; no spare nodes; infra team must add capacity or throttle traffic."
+        }
+       ],
+       "summary": "Escalated persistent overload to infra team as all replicas are saturated and no spare nodes remain."
+      }
+     },
+     {
+      "step": 188,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 260 req/s, 2.13x normal",
+          "backlog:queue 4905 requests waiting (normal 0)",
+          "all replicas show p95 latency >22000 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Persistent overload: incoming traffic 2.13x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Overload persists despite previous escalations; no spare nodes to scale out, and all replicas are saturated. Infra team must add capacity or implement traffic shaping."
+        }
+       ],
+       "summary": "Persistent overload: all replicas saturated at 2.13x normal traffic, no spare nodes; escalated to infra for additional capacity or traffic shaping."
+      }
+     },
+     {
+      "step": 190,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "drops:queue"
+         ],
+         "evidence": [
+          "incoming traffic 257 req/s, 2.11x normal",
+          "backlog:queue 4997 requests waiting (normal 0)",
+          "drops:queue: 71 requests dropped in the last 3 steps (queue full)",
+          "all replicas show p95 latency >20000 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload",
+          "no spare nodes to scale out"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Persistent overload: incoming traffic 2.11x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping. Also queue is dropping requests – urgency increased."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Overload still not resolved; no spare capacity to scale out. Escalating again with updated summary."
+        }
+       ],
+       "summary": "Overload persists with all replicas saturated and queue now dropping requests – escalated to infra for capacity or traffic shaping since no spare nodes remain."
+      }
+     },
+     {
+      "step": 192,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 262 req/s, 2.14x normal",
+          "backlog:queue 4995 requests waiting (normal 0)",
+          "drops:queue: 60 requests dropped in the last 3 steps (queue full)",
+          "all replicas show p95 latency >22000 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload",
+          "no spare nodes to scale out"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Persistent overload: incoming traffic 2.14x normal, all 6 replicas saturated, no spare nodes to scale out. Queue backlog 4995 and dropping requests. Need additional GPU capacity or traffic shaping urgently."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Overload persists and is already escalated; reinforcing urgency as queue drops continue."
+        }
+       ],
+       "summary": "Overload remains the active cause; all replicas saturated with no spare capacity, escalating again to infra for additional GPU capacity or traffic shaping."
+      }
+     },
+     {
+      "step": 196,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "explains": [],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "rollback to 80 at step 42"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 270 req/s, 2.21x normal",
+          "backlog:queue 5060 requests waiting (normal 0)",
+          "drops:queue: 328 requests dropped in the last 3 steps (queue full)",
+          "all replicas show p95 latency >22000 ms, far above fleet normal 3643 ms",
+          "workers.dispatch_rps ~260, consistent with high load",
+          "rollback and scale_out did not clear symptoms, indicating persistent overload"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gateway error rate 4.0% (normal 0.08%)",
+          "11x from step 41 ERROR gateway: upstream timeout after 30000ms",
+          "identity-service is external, owned by identity team",
+          "all replicas slow but errors are at gateway, suggesting upstream timeouts"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "Gateway error rate 4.0% (normal 0.08%) with upstream timeouts after 30000ms. Identity-service is external and may be slow or failing, contributing to errors. Please investigate and fix."
+         },
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "Identity-service is not owned by us; errors at gateway suggest upstream timeouts. Escalating to the owning team."
+        }
+       ],
+       "summary": "Overload already escalated to infra; escalating gateway errors to identity team as a separate external dependency cause."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 64,
+      "team": "infra",
+      "summary": "Persistent overload: incoming traffic 2.02x normal, all 6 replicas saturated, no spare nodes to scale out. Need additional GPU capacity or traffic shaping.",
+      "hypothesis": "H2",
+      "automatic": false
+     },
+     {
+      "step": 196,
+      "team": "identity",
+      "summary": "Gateway error rate 4.0% (normal 0.08%) with upstream timeouts after 30000ms. Identity-service is external and may be slow or failing, contributing to errors. Please investigate and fix.",
+      "hypothesis": "H3",
+      "automatic": false
+     }
+    ],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 10 symptoms open"
+   }
+  ],
+  "cost": 0.014600665,
+  "calls": 45,
+  "tokens_in": 100985,
+  "tokens_out": 24908
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 38,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.9x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "low_memory_limit",
+   "step": 41,
+   "target": [
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "memory_limit_gb 40 deployed to replica-2, replica-3",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 41,
+   "time": "2026-10-30T09:06:50",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

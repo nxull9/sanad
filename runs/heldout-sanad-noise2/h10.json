@@ -1,0 +1,267 @@
+{
+ "score": {
+  "scenario": "h10",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 60,
+  "causes": [
+   {
+    "fault": "bad_template",
+    "target": [
+     "replica-1",
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 0.000115,
+  "tokens_in": 15334,
+  "tokens_out": 3865,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 44,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "Change log step 38 updated template to chat-tpl-13 on replicas 1, 2, 3.",
+       "Replicas 1, 2, 3 are failing canary questions requiring strict JSON format or factual accuracy.",
+       "Replica 4 uses chat-tpl-12 and is not listed in the wrong answers symptoms (implied healthy or at least not part of the specific failure pattern linked to tpl-13).",
+       "The error messages show verbose text ('بالتأكيد!...') instead of expected JSON, indicating the new template is not enforcing the required output constraints."
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 44 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 44,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback the bad template change (chat-tpl-13) to the previous working version (chat-tpl-12) on the affected replicas to restore correct answer formatting and content.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back template on ['replica-1', 'replica-2', 'replica-3']",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 44,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "Change log step 38 updated template to chat-tpl-13 on replicas 1, 2, 3.",
+          "Replicas 1, 2, 3 are failing canary questions requiring strict JSON format or factual accuracy.",
+          "Replica 4 uses chat-tpl-12 and is not listed in the wrong answers symptoms (implied healthy or at least not part of the specific failure pattern linked to tpl-13).",
+          "The error messages show verbose text ('بالتأكيد!...') instead of expected JSON, indicating the new template is not enforcing the required output constraints."
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback the bad template change (chat-tpl-13) to the previous working version (chat-tpl-12) on the affected replicas to restore correct answer formatting and content."
+        }
+       ],
+       "summary": "Rolled back the chat template on replicas 1, 2, and 3 from chat-tpl-13 to chat-tpl-12 to fix incorrect answer formats and content caused by the recent template update."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 54,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.00150922,
+  "calls": 8,
+  "tokens_in": 15334,
+  "tokens_out": 3865
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_template",
+   "step": 38,
+   "target": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "template chat-tpl-13 deployed to replica-1, replica-2, replica-3",
+   "fix": "rollback:template",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "chat template refresh"
+  },
+  {
+   "step": 44,
+   "time": "2026-10-30T09:07:20",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-13",
+   "new": "chat-tpl-12",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

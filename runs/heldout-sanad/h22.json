@@ -1,0 +1,897 @@
+{
+ "score": {
+  "scenario": "h22",
+  "faults": 3,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 570,
+  "causes": [
+   {
+    "fault": "low_memory_limit",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "memory_leak",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 5,
+  "strong_calls": 1,
+  "cost": 0.000702,
+  "tokens_in": 180723,
+  "tokens_out": 47907,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "restarting:replica-1",
+     "restarting:replica-2",
+     "restarting:replica-3",
+     "restarting:replica-4",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "restarting:replica-1",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "restarting:replica-4",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:gateway",
+       "errors:gateway",
+       "backlog:queue",
+       "stalled:workers"
+      ],
+      "evidence": [
+       "OOMKilled while loading weights: limit 40GB, need 68GB on all replicas",
+       "memory_limit_gb changed 80->40 at step 37",
+       "all replicas restarting and slow",
+       "gateway timeouts and queue backlog follow"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 40 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [
+       "restarting:replica-1",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "restarting:replica-4",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:gateway",
+       "errors:gateway",
+       "backlog:queue",
+       "stalled:workers"
+      ],
+      "evidence": [
+       "OOMKilled while loading weights: limit 40GB, need 68GB on all replicas",
+       "memory_limit_gb changed 80->40 at step 37",
+       "all replicas restarting and slow",
+       "gateway timeouts and queue backlog follow"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "evidence": [
+       "All replicas show rising memory usage (approx 1.8-2.0 points/step) despite rollback of memory_limit_gb.",
+       "Memory is well below the 80GB limit, so OOM is not the cause.",
+       "No other config changes since step 38 (server_build upgrade).",
+       "Traffic is normal (1.03x), ruling out overload.",
+       "The server_build was upgraded to serve-1.8.0 at step 38, which coincides with the start of the incident symptoms."
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 48 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [],
+      "evidence": [
+       "Rollback of memory_limit_gb to 80GB cleared OOMKilled, restarts, and latency spikes."
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Memory limit too low causes OOM kills; restore to 80GB to let replicas load weights.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": null,
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 48,
+       "cleared": [
+        "backlog:queue",
+        "errors:gateway",
+        "restarting:replica-1",
+        "restarting:replica-2",
+        "restarting:replica-3",
+        "restarting:replica-4",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4",
+        "stalled:workers"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 48,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Rolling back server_build to previous version to test if it stops the memory leak.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 56,
+       "cleared": [
+        "memory:replica-1",
+        "memory:replica-2",
+        "memory:replica-3",
+        "memory:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "restarting:replica-1",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "restarting:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "explains": [
+          "restarting:replica-1",
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "restarting:replica-4",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway",
+          "backlog:queue",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "OOMKilled while loading weights: limit 40GB, need 68GB on all replicas",
+          "memory_limit_gb changed 80->40 at step 37",
+          "all replicas restarting and slow",
+          "gateway timeouts and queue backlog follow"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Memory limit too low causes OOM kills; restore to 80GB to let replicas load weights."
+        }
+       ],
+       "summary": "Replicas are OOM-killed because memory_limit_gb was lowered to 40GB while models need 68GB; rolling back the memory limit should restore service."
+      }
+     },
+     {
+      "step": 48,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-1",
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "restarting:replica-4",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway",
+          "backlog:queue",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "OOMKilled while loading weights: limit 40GB, need 68GB on all replicas",
+          "memory_limit_gb changed 80->40 at step 37",
+          "all replicas restarting and slow",
+          "gateway timeouts and queue backlog follow"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "memory:replica-1",
+          "memory:replica-2",
+          "memory:replica-3",
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "All replicas show rising memory usage (approx 1.8-2.0 points/step) despite rollback of memory_limit_gb to 80GB",
+          "Memory is well below the 80GB limit, so OOM is not the cause",
+          "No other config changes since step 38 (server_build upgrade)",
+          "Traffic is normal (1.03x)"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-1",
+          "contains": "leak"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check for memory leak indicators in replica logs following the server build upgrade."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-1",
+          "contains": "cache"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if KV cache or similar structures are growing unbounded."
+        }
+       ],
+       "summary": "Investigating persistent memory rise on all replicas after fixing the OOM config issue, suspecting a leak in the new server build or runtime."
+      }
+     },
+     {
+      "step": 48,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "Rollback of memory_limit_gb to 80GB cleared OOMKilled, restarts, and latency spikes."
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-1",
+          "memory:replica-2",
+          "memory:replica-3",
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "All replicas show rising memory usage (approx 1.8-2.0 points/step) despite rollback of memory_limit_gb.",
+          "Memory is well below the 80GB limit, so OOM is not the cause.",
+          "No other config changes since step 38 (server_build upgrade).",
+          "Traffic is normal (1.03x), ruling out overload.",
+          "The server_build was upgraded to serve-1.8.0 at step 38, which coincides with the start of the incident symptoms."
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Rolling back server_build to previous version to test if it stops the memory leak."
+        }
+       ],
+       "summary": "Suspecting a memory leak in the new server build (serve-1.8.0); rolling back to previous version."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 58,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 90,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3"
+      ],
+      "evidence": [
+       "incoming traffic 223 req/s (1.84x normal)",
+       "all remaining replicas slow simultaneously",
+       "queue backlog growing (9x WARN since step 88)"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 90 scale_out -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 90,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is 1.81x normal and all replicas are saturated; adding capacity to handle the load spike.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 100,
+       "cleared": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-4"
+       ],
+       "still_open": [
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3"
+       ]
+      }
+     },
+     {
+      "step": 100,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is still 1.84x normal and queue is backing up; adding capacity to handle the load.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     }
+    ],
+    "turns": [
+     {
+      "step": 90,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 219 req/s (1.81x normal)",
+          "all replicas slow simultaneously",
+          "queue backlog growing"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is 1.81x normal and all replicas are saturated; adding capacity to handle the load spike."
+        }
+       ],
+       "summary": "The system is experiencing overload due to a significant traffic spike (1.81x normal), causing queue backlog and high latency across all replicas; scaling out by 2 replicas is the appropriate mitigation."
+      }
+     },
+     {
+      "step": 100,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 223 req/s (1.84x normal)",
+          "all remaining replicas slow simultaneously",
+          "queue backlog growing (9x WARN since step 88)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is still 1.84x normal and queue is backing up; adding capacity to handle the load."
+        }
+       ],
+       "summary": "Overload persists with high traffic and queue backlog despite previous scale-out; scaling out further to absorb load."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 104,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.022005809700000004,
+  "calls": 76,
+  "tokens_in": 180723,
+  "tokens_out": 47907
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "low_memory_limit",
+   "step": 37,
+   "target": [],
+   "cause": "memory_limit_gb 40 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "memory_leak",
+   "step": 38,
+   "target": [],
+   "cause": "server_build serve-1.8.0 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "traffic_spike",
+   "step": 86,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 48,
+   "time": "2026-10-30T09:08:00",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

@@ -1,0 +1,627 @@
+{
+ "score": {
+  "scenario": "h13",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 110,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "bad_quantization",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 1,
+  "undone": 1,
+  "approvals": 1,
+  "model_calls": 5,
+  "strong_calls": 4,
+  "cost": 0.001076,
+  "tokens_in": 33220,
+  "tokens_out": 6851,
+  "escalations": [
+   {
+    "step": 72,
+    "team": "platform",
+    "summary": "Rollback of quantization to fp8 on all replicas is blocked/not taking effect; all replicas still run int4-awq-unvalidated causing extreme latency and queue backlog. Need manual intervention to force rollback or revert the bad release.",
+    "hypothesis": "H1",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 48,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "quantization",
+      "explains": [
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway"
+      ],
+      "evidence": [
+       "All replicas still show quantization=int4-awq-unvalidated (rollback did not take effect)",
+       "All replicas have p95 latency ~31s vs normal 3.6s",
+       "Traffic is 1.78x normal, insufficient to cause overload alone given the latency spike",
+       "Gateway errors (30.2%) and drops (1127) are consequences of extreme latency and queue backlog"
+      ],
+      "confidence": 0.9,
+      "attempts": 2,
+      "history": [
+       "step 48 rollback -> not_fixed",
+       "step 60 restart -> not_fixed"
+      ],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 48,
+      "action": "rollback",
+      "args": {
+       "key": "quantization",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Roll back the unvalidated int4 quantization which correlates with the massive latency increase across all replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "quantization",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back quantization on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 56,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "set quantization on ['replica-1', 'replica-2', 'replica-3', 'replica-4']"
+     },
+     {
+      "step": 60,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback did not take effect; restarting workers may force the replicas to reload the previous quantization setting (fp8) from the model server configuration.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "bad_config",
+       "setting": "quantization",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "worker pool restarting",
+      "verified": {
+       "step": 70,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "drops:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 70,
+      "action": "rollback",
+      "args": {
+       "key": "quantization",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Previous rollback did not take effect; retry rollback to revert quantization to fp8 and restore normal latency.",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: H1 has had 2 fixes that did not work; escalate it"
+     },
+     {
+      "step": 72,
+      "action": "escalate",
+      "args": {
+       "team": "platform",
+       "summary": "Rollback of quantization to fp8 on all replicas is blocked/not taking effect; all replicas still run int4-awq-unvalidated causing extreme latency and queue backlog. Need manual intervention to force rollback or revert the bad release."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Two fixes (rollback, restart) did not clear symptoms; rollback is blocked by system. This is a bad release that needs human intervention to revert.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "bad_config",
+       "setting": "quantization",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "handed to platform"
+     }
+    ],
+    "turns": [
+     {
+      "step": 48,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "All replicas share quantization=int4-awq-unvalidated set at step 37",
+          "All replicas are significantly slower than normal (p95 ~11.5s vs 3.6s)",
+          "Traffic is only 1.82x normal, insufficient to cause overload alone given the latency spike",
+          "The setting name 'unvalidated' suggests potential performance regression or instability"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "quantization",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Roll back the unvalidated int4 quantization which correlates with the massive latency increase across all replicas."
+        }
+       ],
+       "summary": "Suspect the recent deployment of unvalidated int4-awq quantization on all replicas causing severe latency degradation and queue backlog; rolling back to previous quantization state."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "All replicas still show quantization=int4-awq-unvalidated (rollback did not take effect)",
+          "All replicas have p95 latency ~31s vs normal 3.6s",
+          "Traffic is 1.78x normal, insufficient to cause overload alone given the latency spike",
+          "Gateway errors (30.1%) and drops (747) are consequences of extreme latency and queue backlog"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-1",
+          "contains": "rollback"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Rollback at step 48 did not clear symptoms; need to verify if the rollback actually applied or was rejected"
+        }
+       ],
+       "summary": "Rollback of quantization to fp8 did not take effect; investigating why the setting remains int4-awq-unvalidated on all replicas."
+      }
+     },
+     {
+      "step": 60,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "All replicas still show quantization=int4-awq-unvalidated (rollback did not take effect)",
+          "All replicas have p95 latency ~31s vs normal 3.6s",
+          "Traffic is 1.78x normal, insufficient to cause overload alone given the latency spike",
+          "Gateway errors (30.1%) and drops (747) are consequences of extreme latency and queue backlog"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "workers"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback did not take effect; restarting workers may force the replicas to reload the previous quantization setting (fp8) from the model server configuration."
+        }
+       ],
+       "summary": "Rollback of quantization to fp8 did not take effect; restarting workers to force replicas to reload the previous setting."
+      }
+     },
+     {
+      "step": 70,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "All replicas still show quantization=int4-awq-unvalidated (rollback did not take effect)",
+          "All replicas have p95 latency ~31s vs normal 3.6s",
+          "Traffic is 1.80x normal, insufficient to cause overload alone given the latency spike",
+          "Gateway errors (30.1%) and drops (1212) are consequences of extreme latency and queue backlog"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "quantization",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Previous rollback did not take effect; retry rollback to revert quantization to fp8 and restore normal latency."
+        }
+       ],
+       "summary": "Retry rollback of quantization setting on all replicas to revert int4-awq-unvalidated to fp8, as the previous rollback did not take effect and all symptoms point to this bad config."
+      }
+     },
+     {
+      "step": 72,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "quantization",
+         "explains": [
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "All replicas still show quantization=int4-awq-unvalidated (rollback did not take effect)",
+          "All replicas have p95 latency ~31s vs normal 3.6s",
+          "Traffic is 1.78x normal, insufficient to cause overload alone given the latency spike",
+          "Gateway errors (30.2%) and drops (1127) are consequences of extreme latency and queue backlog"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "platform",
+          "summary": "Rollback of quantization to fp8 on all replicas is blocked/not taking effect; all replicas still run int4-awq-unvalidated causing extreme latency and queue backlog. Need manual intervention to force rollback or revert the bad release."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Two fixes (rollback, restart) did not clear symptoms; rollback is blocked by system. This is a bad release that needs human intervention to revert."
+        }
+       ],
+       "summary": "Escalating H1: quantization=int4-awq-unvalidated on all replicas is causing severe latency and queue backlog; rollback is blocked and needs manual intervention."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 72,
+      "team": "platform",
+      "summary": "Rollback of quantization to fp8 on all replicas is blocked/not taking effect; all replicas still run int4-awq-unvalidated causing extreme latency and queue backlog. Need manual intervention to force rollback or revert the bad release.",
+      "hypothesis": "H1",
+      "automatic": false
+     }
+    ],
+    "changes": 2,
+    "approvals": 1,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 8 symptoms open"
+   }
+  ],
+  "cost": 0.0031877973999999997,
+  "calls": 17,
+  "tokens_in": 33220,
+  "tokens_out": 6851
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_quantization",
+   "step": 37,
+   "target": [],
+   "cause": "quantization int4-awq-unvalidated deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:quantization",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 43,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "fp8",
+   "new": "int4-awq-unvalidated",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "int4 to halve GPU memory"
+  },
+  {
+   "step": 48,
+   "time": "2026-10-30T09:08:00",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "int4-awq-unvalidated",
+   "new": "fp8",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

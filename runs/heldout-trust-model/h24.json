@@ -1,0 +1,2043 @@
+{
+ "score": {
+  "scenario": "h24",
+  "faults": 4,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "bad_tokenizer",
+    "target": [
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_template",
+    "target": [
+     "replica-4"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_model",
+    "target": [],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 7,
+  "unneeded_changes": 0,
+  "blocked": 1,
+  "undone": 4,
+  "approvals": 1,
+  "model_calls": 12,
+  "strong_calls": 9,
+  "cost": 0.005809,
+  "tokens_in": 261328,
+  "tokens_out": 66078,
+  "escalations": [
+   {
+    "step": 122,
+    "team": "infra",
+    "summary": "Template rollback on replica-4 (chat-tpl-13 -> chat-tpl-12) fails to persist after two attempts. Platform still shows chat-tpl-13*. The template likely has a sticky bug. Replica-4 is the only replica with this template and shows widespread wrong answers affecting retrieval and fact canaries. Request manual template config reset or node-level fix. Meanwhile, all 4 replicas show wrong answers suggesting a separate vector DB issue.",
+    "hypothesis": "H6",
+    "automatic": false
+   },
+   {
+    "step": 136,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: wrong_answers:replica-1, wrong_answers:replica-2, wrong_answers:replica-3, wrong_answers:replica-4. Ledger: H1 bad_config tokenizer on ['replica-2', 'replica-3'] [partly_fixed]; H2 index_corruption  on ['vectordb'] [not_fixed]; H3 bad_config template on ['replica-4'] [ruled_out]; H4 bad_release model_version on ['replica-4'] [ruled_out]; H5 bad_release template on ['replica-4'] [not_fixed]; H6 bad_config template on ['replica-4'] [not_fixed]; H7 bad_config template on ['replica-4'] [suspected]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "long_answers:replica-2",
+     "long_answers:replica-3",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "long_answers:replica-2",
+       "long_answers:replica-3"
+      ],
+      "evidence": [
+       "replica-2/3 had tok-2.2-beta causing long answers; rolled back to tok-2.1",
+       "long_answers symptoms no longer open"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "All four replicas (healthy settings, allam-34b-v2.4-rc) still return wrong answers for retrieval/fact canaries",
+       "Failover to standby vectordb at step 50 did not fully clear; standby index likely stale/incomplete",
+       "Wrong answers span every replica regardless of their differing settings",
+       "Rebuild of standby index completed at step 113 with checksums verified, but replica-1/2/3 still wrong"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 50 failover_vectordb -> partly_fixed",
+       "step 94 rebuild_index -> not_fixed"
+      ],
+      "status": "not_fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "Rollback of template on replica-4 at step 58 did not clear symptoms"
+      ],
+      "confidence": 1.0,
+      "attempts": 1,
+      "history": [
+       "step 58 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "bad_release",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+       "Rollback of model_version on replica-4 at step 70 did not clear symptoms"
+      ],
+      "confidence": 1.0,
+      "attempts": 1,
+      "history": [
+       "step 70 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H5": {
+      "id": "H5",
+      "type": "bad_release",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "replica-4 is the only replica with chat-tpl-13*",
+       "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+       "replica-4 fails every category which no other single-setting replica does"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 82 rollback -> not_fixed"
+      ],
+      "status": "not_fixed"
+     },
+     "H6": {
+      "id": "H6",
+      "type": "bad_config",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "replica-4 is the only replica with chat-tpl-13*",
+       "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+       "replica-4 fails every category which no other single-setting replica does"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 122 set_weight -> not_fixed"
+      ],
+      "status": "not_fixed"
+     },
+     "H7": {
+      "id": "H7",
+      "type": "bad_config",
+      "component": [
+       "replica-4"
+      ],
+      "setting": "template",
+      "explains": [
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "replica-4 is the only replica with chat-tpl-13*",
+       "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+       "replica-4 fails every category which no other single-setting replica does",
+       "Escalated to infra at step 122 for manual template config reset"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Revert the bad tokenizer config that was deployed in step 37 to restore correct Arabic tokenization.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "tokenizer",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-2', 'replica-3']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "long_answers:replica-2",
+        "long_answers:replica-3"
+       ],
+       "still_open": [
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "failover_vectordb",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Switching to the standby vector database to resolve potential index corruption affecting all replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "vectordb primary -> standby",
+      "verified": {
+       "step": 58,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3"
+       ],
+       "still_open": [
+        "wrong_answers:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 58,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Rollback the template change on replica-4 which is the only remaining source of errors.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back template on ['replica-4']",
+      "verified": {
+       "step": 66,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set template on ['replica-4']"
+     },
+     {
+      "step": 70,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Replica-4 is the only replica still showing wrong answers after vector DB failover and template rollback. The model version allam-34b-v2.4-rc was deployed to all replicas at step 57, but only replica-4 remains affected. Rolling back model_version on replica-4 to the previous version (allam-34b-v2.3) will test if the new release is the cause.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-4']",
+      "verified": {
+       "step": 78,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set model_version on ['replica-4']"
+     },
+     {
+      "step": 82,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H5",
+      "purpose": "fix",
+      "why": "replica-4 uniquely carries chat-tpl-13* and fails all categories; re-apply the template rollback since the platform still shows the bad template",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "template",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "rolled back template on ['replica-4']",
+      "verified": {
+       "step": 90,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set template on ['replica-4']"
+     },
+     {
+      "step": 94,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Standby vectordb index is stale; rebuilding should clear cross-replica wrong answers",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding standby index (about 200s)",
+      "verified": {
+       "step": 122,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 94,
+      "action": "rollback",
+      "args": {
+       "key": "template",
+       "replicas": [
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H5",
+      "purpose": "fix",
+      "why": "chat-tpl-13* still on replica-4; retry rollback so it actually reverts to chat-tpl-12",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: rollback {'key': 'template', 'replicas': ['replica-4']} already ran 2 times; it is not working, rethink or escalate"
+     },
+     {
+      "step": 122,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Template rollback on replica-4 (chat-tpl-13 -> chat-tpl-12) fails to persist after two attempts. Platform still shows chat-tpl-13*. The template likely has a sticky bug. Replica-4 is the only replica with this template and shows widespread wrong answers affecting retrieval and fact canaries. Request manual template config reset or node-level fix. Meanwhile, all 4 replicas show wrong answers suggesting a separate vector DB issue."
+      },
+      "hypothesis": "H6",
+      "purpose": "escalate",
+      "why": "Rollback does not stick after 2 attempts; not reproducible by Sanad. Needs human intervention.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "handed to infra"
+     },
+     {
+      "step": 122,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 0.0
+      },
+      "hypothesis": "H6",
+      "purpose": "fix",
+      "why": "Stop sending traffic to replica-4 to mitigate its wrong answers while the template bug is escalated.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "template",
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "replica-4 traffic weight 1.0 -> 0.0",
+      "verified": {
+       "step": 130,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "replica-4 traffic weight 0.0 -> 1.0"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "long_answers:replica-2",
+       "long_answers:replica-3",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "wrong_answers:replica-2",
+          "long_answers:replica-3",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 use tok-2.2-beta, while healthy replicas (1, 4) use tok-2.1",
+          "Change log step 37 updated tokenizer on replica-2 and replica-3 to tok-2.2-beta",
+          "Symptoms are specific to Arabic language processing (wrong answers in Arabic, correct in English)",
+          "Long answers suggest the model is failing to stop or generate verbose fallback text due to tokenization mismatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Revert the bad tokenizer config that was deployed in step 37 to restore correct Arabic tokenization."
+        }
+       ],
+       "summary": "Rolled back the tokenizer setting on replica-2 and replica-3 from tok-2.2-beta to tok-2.1 to fix Arabic generation errors and long answers caused by the recent upgrade."
+      }
+     },
+     {
+      "step": 50,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 used tok-2.2-beta, causing long answers; fixed by rollback to tok-2.1"
+         ],
+         "status": "resolved",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas (1-4) are returning wrong answers for the same Arabic retrieval question",
+          "All replicas share the same vector database backend",
+          "Replicas have identical healthy configurations (model_version, template, tokenizer, etc.)",
+          "The error is consistent across all nodes, pointing to a shared data source rather than node-specific issues"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "failover_vectordb",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Switching to the standby vector database to resolve potential index corruption affecting all replicas."
+        }
+       ],
+       "summary": "Rolled back tokenizer config on replicas 2 and 3 which resolved their long answer issues; now failing over to standby vector DB as all replicas show wrong answers likely due to shared index corruption."
+      }
+     },
+     {
+      "step": 58,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 used tok-2.2-beta, causing long answers; fixed by rollback to tok-2.1"
+         ],
+         "status": "resolved",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "All replicas (1-4) were returning wrong answers for the same Arabic retrieval question",
+          "Failover to standby vectordb cleared symptoms on replicas 1, 2, and 3"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Replica-4 is the only replica with template=chat-tpl-13*",
+          "Change log shows template was updated to chat-tpl-13 on replica-4 at step 53",
+          "Other replicas use chat-tpl-12 and are healthy after vector DB failover",
+          "The wrong answer format ('عاصمة المملكة العربية السعودية هي جدة.') suggests a prompt formatting issue where the model repeats the question or fails to follow instructions correctly, consistent with a bad template."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Rollback the template change on replica-4 which is the only remaining source of errors."
+        }
+       ],
+       "summary": "Rolled back the template on replica-4 to fix persistent wrong answers while other replicas are healthy."
+      }
+     },
+     {
+      "step": 70,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-2 and replica-3 used tok-2.2-beta, causing long answers; fixed by rollback to tok-2.1"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All replicas (1-4) were returning wrong answers for the same Arabic retrieval question",
+          "Failover to standby vectordb cleared symptoms on replicas 1, 2, and 3"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Replica-4 is the only replica with template=chat-tpl-13*",
+          "Change log shows template was updated to chat-tpl-13 on replica-4 at step 53",
+          "Other replicas use chat-tpl-12 and are healthy after vector DB failover",
+          "The wrong answer format ('عاصمة المملكة العربية السعودية هي جدة.') suggests a prompt formatting issue where the model repeats the question or fails to follow instructions correctly, consistent with a bad template.",
+          "Rollback of template on replica-4 at step 58 did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+          "Replica-4's wrong answers include Arabic fact, format, math, and retrieval errors, while other replicas are now healthy",
+          "The model version change could have introduced a regression that only manifests with the specific template on replica-4, or the model version itself is the cause on replica-4"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-4",
+          "contains": "Arabic"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if replica-4's wrong answers are consistent with a template issue after rollback failed"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-4",
+          "contains": "English"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if replica-4's English canary results show a pattern different from other replicas, suggesting a model version issue"
+        }
+       ],
+       "summary": "After vector DB failover cleared symptoms on replicas 1-3, replica-4 still has wrong answers; investigating whether the template rollback was incomplete or the model version update is the cause on replica-4."
+      }
+     },
+     {
+      "step": 70,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-2 and replica-3 used tok-2.2-beta, causing long answers; fixed by rollback to tok-2.1"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "All replicas (1-4) were returning wrong answers for the same Arabic retrieval question",
+          "Failover to standby vectordb cleared symptoms on replicas 1, 2, and 3"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Replica-4 is the only replica with template=chat-tpl-13*",
+          "Change log shows template was updated to chat-tpl-13 on replica-4 at step 53",
+          "Other replicas use chat-tpl-12 and are healthy after vector DB failover",
+          "Rollback of template on replica-4 at step 58 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+          "Replica-4's wrong answers include Arabic fact, format, math, and retrieval errors, while other replicas are now healthy",
+          "The model version change could have introduced a regression that only manifests with the specific template on replica-4, or the model version itself is the cause on replica-4"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "Replica-4 is the only replica still showing wrong answers after vector DB failover and template rollback. The model version allam-34b-v2.4-rc was deployed to all replicas at step 57, but only replica-4 remains affected. Rolling back model_version on replica-4 to the previous version (allam-34b-v2.3) will test if the new release is the cause."
+        }
+       ],
+       "summary": "Rolling back model_version on replica-4 to test if the allam-34b-v2.4-rc release is causing the remaining wrong answers."
+      }
+     },
+     {
+      "step": 82,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2 and replica-3 used tok-2.2-beta, causing long answers; fixed by rollback to tok-2.1"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "All replicas returned wrong answers for the same Arabic retrieval question",
+          "Failover to standby vectordb cleared symptoms on replicas 1, 2, and 3",
+          "Standby DB is active but index may still be stale/incomplete for the new data"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.5
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Rollback of template on replica-4 at step 58 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.6
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+          "Rollback of model_version on replica-4 at step 70 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.6
+        },
+        {
+         "id": "H5",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Replica-4 is the only replica with chat-tpl-13, and it still fails every category (fact/format/retrieval, Arabic and English)",
+          "Template rollback to chat-tpl-12 was applied but then reverted; current platform shows chat-tpl-13* still on replica-4, so the rollback may not have taken effect"
+         ],
+         "status": "suspected",
+         "confidence": 0.55
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H5",
+         "purpose": "fix",
+         "why": "replica-4 uniquely carries chat-tpl-13* and fails all categories; re-apply the template rollback since the platform still shows the bad template"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-4"
+         },
+         "hypothesis": "H5",
+         "purpose": "investigate",
+         "why": "confirm whether canary failures on replica-4 shift after the template rollback takes effect"
+        }
+       ],
+       "summary": "Re-rollback replica-4's chat-tpl-13 template (rollback previously reverted) to clear its all-category wrong answers."
+      }
+     },
+     {
+      "step": 94,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2/3 had tok-2.2-beta causing long answers; rolled back to tok-2.1",
+          "long_answers symptoms no longer open"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas (healthy settings, allam-34b-v2.4-rc) still return wrong answers for retrieval/fact canaries",
+          "Failover to standby vectordb at step 50 did not fully clear; standby index likely stale/incomplete",
+          "Wrong answers span every replica regardless of their differing settings"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H5",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        }
+       ],
+       "actions": [
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Standby vectordb index is stale; rebuilding should clear cross-replica wrong answers"
+        },
+        {
+         "action": "rollback",
+         "args": {
+          "key": "template",
+          "replicas": [
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H5",
+         "purpose": "fix",
+         "why": "chat-tpl-13* still on replica-4; retry rollback so it actually reverts to chat-tpl-12"
+        }
+       ],
+       "summary": "Rebuild the stale standby vector index for cross-replica wrong answers and retry reverting replica-4's template to chat-tpl-12."
+      }
+     },
+     {
+      "step": 122,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "long_answers:replica-2",
+          "long_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-2/3 had tok-2.2-beta causing long answers; rolled back to tok-2.1",
+          "long_answers symptoms no longer open"
+         ],
+         "status": "resolved",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All four replicas (healthy settings, allam-34b-v2.4-rc) still return wrong answers for retrieval/fact canaries",
+          "Failover to standby vectordb at step 50 did not fully clear; standby index likely stale/incomplete",
+          "Wrong answers span every replica regardless of their differing settings"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "Rollback of template on replica-4 at step 58 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+          "Rollback of model_version on replica-4 at step 70 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Template rollback on replica-4 (chat-tpl-13 -> chat-tpl-12) fails to persist after two attempts. Platform still shows chat-tpl-13*. The template likely has a sticky bug. Replica-4 is the only replica with this template and shows widespread wrong answers affecting retrieval and fact canaries. Request manual template config reset or node-level fix. Meanwhile, all 4 replicas show wrong answers suggesting a separate vector DB issue."
+         },
+         "hypothesis": "H5",
+         "purpose": "escalate",
+         "why": "Rollback does not stick after 2 attempts; not reproducible by Sanad. Needs human intervention."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-4",
+          "contains": "Arabic format"
+         },
+         "hypothesis": "H5",
+         "purpose": "investigate",
+         "why": "Check if replica-4's format errors match template corruption or model mis-generation."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 0.0
+         },
+         "hypothesis": "H5",
+         "purpose": "fix",
+         "why": "Stop sending traffic to replica-4 to mitigate its wrong answers while the template bug is escalated."
+        }
+       ],
+       "summary": "Template rollback on replica-4 is stuck; escalating to infra. Mitigating by dropping traffic to replica-4. Rebuild of standby index completed but symptoms persist; considering failback to original vectordb."
+      }
+     },
+     {
+      "step": 134,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-2/3 had tok-2.2-beta causing long answers; rolled back to tok-2.1",
+          "long_answers symptoms no longer open"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "All four replicas (healthy settings, allam-34b-v2.4-rc) still return wrong answers for retrieval/fact canaries",
+          "Failover to standby vectordb at step 50 did not fully clear; standby index likely stale/incomplete",
+          "Wrong answers span every replica regardless of their differing settings",
+          "Rebuild of standby index completed at step 113 with checksums verified, but replica-1/2/3 still wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does",
+          "Escalated to infra at step 122 for manual template config reset"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "Arabic retrieval"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "After index rebuild completed, check if replica-1's Arabic retrieval canary has improved; if not, the index rebuild did not fix the issue."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-4",
+          "contains": "Arabic format"
+         },
+         "hypothesis": "H5",
+         "purpose": "investigate",
+         "why": "Check if replica-4 still fails Arabic format canary after escalation; if still failing, the template issue persists and needs further action."
+        }
+       ],
+       "summary": "Investigating whether index rebuild fixed replica-1/2/3 wrong answers and whether replica-4 template issue persists after escalation."
+      }
+     },
+     {
+      "step": 134,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-2/3 had tok-2.2-beta causing long answers; rolled back to tok-2.1",
+          "long_answers symptoms no longer open"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "All four replicas (healthy settings, allam-34b-v2.4-rc) still return wrong answers for retrieval/fact canaries",
+          "Failover to standby vectordb at step 50 did not fully clear; standby index likely stale/incomplete",
+          "Wrong answers span every replica regardless of their differing settings",
+          "Rebuild of standby index completed at step 113 with checksums verified, but replica-1/2/3 still wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Rollback of template on replica-4 at step 58 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+          "Rollback of model_version on replica-4 at step 70 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H7",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does",
+          "Escalated to infra at step 122 for manual template config reset"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-4",
+          "contains": "template"
+         },
+         "hypothesis": "H5",
+         "purpose": "investigate",
+         "why": "Check if there are any log messages on replica-4 related to template loading or errors that might explain why rollback doesn't stick"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-2",
+          "contains": ""
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check current canary results on replica-2 to see if the pattern of errors matches the vector DB hypothesis (all replicas share same errors)"
+        }
+       ],
+       "summary": "Replica-4 still has wrong answers due to a sticky template (chat-tpl-13*) that rollbacks don't fix; replica-1/2/3 also have wrong answers suggesting a separate vector DB issue despite index rebuild."
+      }
+     },
+     {
+      "step": 134,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-2/3 had tok-2.2-beta causing long answers; rolled back to tok-2.1",
+          "long_answers symptoms no longer open"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "All four replicas (healthy settings, allam-34b-v2.4-rc) still return wrong answers for retrieval/fact canaries",
+          "Failover to standby vectordb at step 50 did not fully clear; standby index likely stale/incomplete",
+          "Wrong answers span every replica regardless of their differing settings",
+          "Rebuild of standby index completed at step 113 with checksums verified, but replica-1/2/3 still wrong"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Rollback of template on replica-4 at step 58 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+          "Rollback of model_version on replica-4 at step 70 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-4",
+          "contains": "template"
+         },
+         "hypothesis": "H5",
+         "purpose": "investigate",
+         "why": "Rollback of template on replica-4 is not sticking; need to see if there is a persistent config or if the platform is not applying the change."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": ""
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Replica-1 still has wrong answers; check if its canary pattern matches the others to confirm index corruption."
+        }
+       ],
+       "summary": "Replica-4's template rollback is not sticking; need to investigate logs. Replica-1/2/3 still have wrong answers after index rebuild, suggesting the index may still be corrupted or the model version is causing issues."
+      }
+     },
+     {
+      "step": 136,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "replica-2/3 had tok-2.2-beta causing long answers; rolled back to tok-2.1",
+          "long_answers symptoms no longer open"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "All four replicas (healthy settings, allam-34b-v2.4-rc) still return wrong answers for retrieval/fact canaries",
+          "Failover to standby vectordb at step 50 did not fully clear; standby index likely stale/incomplete",
+          "Wrong answers span every replica regardless of their differing settings",
+          "Rebuild of standby index completed at step 113 with checksums verified, but replica-1/2/3 still wrong"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [],
+         "evidence": [
+          "Rollback of template on replica-4 at step 58 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [],
+         "evidence": [
+          "All replicas were updated to allam-34b-v2.4-rc at step 57, but only replica-4 still has wrong answers after vector DB failover and template rollback",
+          "Rollback of model_version on replica-4 at step 70 did not clear symptoms"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H6",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H7",
+         "type": "bad_config",
+         "component": [
+          "replica-4"
+         ],
+         "setting": "template",
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 is the only replica with chat-tpl-13*",
+          "Template rollback to chat-tpl-12 was applied twice; platform still shows chat-tpl-13* on replica-4, so the rollback is not sticking",
+          "replica-4 fails every category which no other single-setting replica does",
+          "Escalated to infra at step 122 for manual template config reset"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-4",
+          "contains": "template"
+         },
+         "hypothesis": "H7",
+         "purpose": "investigate",
+         "why": "Check if there are any logs indicating why the template rollback is not sticking on replica-4"
+        }
+       ],
+       "summary": "Investigating why template rollback on replica-4 is not sticking, while also considering that the vector database index rebuild may not have fully resolved the issue for replicas 1-3."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 122,
+      "team": "infra",
+      "summary": "Template rollback on replica-4 (chat-tpl-13 -> chat-tpl-12) fails to persist after two attempts. Platform still shows chat-tpl-13*. The template likely has a sticky bug. Replica-4 is the only replica with this template and shows widespread wrong answers affecting retrieval and fact canaries. Request manual template config reset or node-level fix. Meanwhile, all 4 replicas show wrong answers suggesting a separate vector DB issue.",
+      "hypothesis": "H6",
+      "automatic": false
+     },
+     {
+      "step": 136,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: wrong_answers:replica-1, wrong_answers:replica-2, wrong_answers:replica-3, wrong_answers:replica-4. Ledger: H1 bad_config tokenizer on ['replica-2', 'replica-3'] [partly_fixed]; H2 index_corruption  on ['vectordb'] [not_fixed]; H3 bad_config template on ['replica-4'] [ruled_out]; H4 bad_release model_version on ['replica-4'] [ruled_out]; H5 bad_release template on ['replica-4'] [not_fixed]; H6 bad_config template on ['replica-4'] [not_fixed]; H7 bad_config template on ['replica-4'] [suspected]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 7,
+    "approvals": 1,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 4 symptoms open"
+   }
+  ],
+  "cost": 0.0377406278,
+  "calls": 110,
+  "tokens_in": 261328,
+  "tokens_out": 66078
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "bad_tokenizer",
+   "step": 37,
+   "target": [
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-2, replica-3",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "index_corruption",
+   "step": 45,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f4",
+   "kind": "bad_template",
+   "step": 53,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "template chat-tpl-13 deployed to replica-4",
+   "fix": "rollback:template",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f5",
+   "kind": "bad_model",
+   "step": 57,
+   "target": [],
+   "cause": "model_version allam-34b-v2.4-rc deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:model_version",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 53,
+   "time": "2026-10-30T09:08:50",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-12",
+   "new": "chat-tpl-13",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "chat template refresh"
+  },
+  {
+   "step": 57,
+   "time": "2026-10-30T09:09:30",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.4-rc",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "ALLaM 2.4 release candidate"
+  },
+  {
+   "step": 58,
+   "time": "2026-10-30T09:09:40",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-13",
+   "new": "chat-tpl-12",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 70,
+   "time": "2026-10-30T09:11:40",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.4-rc",
+   "new": "allam-34b-v2.3",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 82,
+   "time": "2026-10-30T09:13:40",
+   "component": "model-server",
+   "key": "template",
+   "old": "chat-tpl-13",
+   "new": "chat-tpl-12",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

@@ -1,0 +1,1270 @@
+{
+ "score": {
+  "scenario": "h16",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "worker_deadlock",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 1,
+  "model_calls": 12,
+  "strong_calls": 11,
+  "cost": 0.00267,
+  "tokens_in": 105060,
+  "tokens_out": 24874,
+  "escalations": [
+   {
+    "step": 68,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4. Ledger: H1 overload  on ['gateway', 'workers', 'replicas'] [not_fixed]; H2 external_dependency  on ['workers'] [fixed]; H3 bad_config max_concurrency on ['workers'] [suspected]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "incoming traffic is 216 req/s (1.77x normal)",
+       "all replicas uniformly slow (p95 ~31s vs normal 3.6s)",
+       "queue backlog 4866 requests",
+       "workers dispatching 0 req/s"
+      ],
+      "confidence": 0.3,
+      "attempts": 1,
+      "history": [
+       "step 38 scale_out -> not_fixed"
+      ],
+      "status": "not_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "external_dependency",
+      "component": [
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "stalled:workers"
+      ],
+      "evidence": [
+       "workers dispatching 0 req/s despite queue backlog",
+       "log: 'waiting on dispatch_mutex'",
+       "restart cleared stalled:workers"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 56 restart -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": "max_concurrency",
+      "explains": [
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "backlog:queue"
+      ],
+      "evidence": [
+       "workers max_concurrency=64, but dispatcher 0 tasks dispatched in last 10s",
+       "queue full drops 1125 requests",
+       "gateway upstream timeout after 30000ms",
+       "all replicas slow because no work dispatched"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is significantly above normal and all replicas are saturated; adding capacity will reduce queue backlog and latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 48,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "removed ['replica-5', 'replica-6']"
+     },
+     {
+      "step": 56,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Workers are stalled on dispatch_mutex with zero dispatch; restart may clear a deadlock.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "worker pool restarting",
+      "verified": {
+       "step": 66,
+       "cleared": [
+        "stalled:workers"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 212 req/s (1.73x normal)",
+          "all replicas are uniformly slow (p95 ~9-10s vs normal 3.6s)",
+          "queue backlog is growing (1033 requests)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is significantly above normal and all replicas are saturated; adding capacity will reduce queue backlog and latency."
+        }
+       ],
+       "summary": "The system is experiencing overload due to 1.73x normal traffic causing high latency across all replicas and a growing queue backlog; scaling out by 2 replicas is the appropriate mitigation."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 218 req/s (1.78x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5062 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "workers are upstream of replicas, so stalled workers explain zero dispatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers are stalled (0 req/s) and logs show 'waiting on dispatch_mutex'. Need to see if this is a deadlock or a normal wait pattern."
+        }
+       ],
+       "summary": "Overload alone cannot explain stalled workers (0 req/s) while queue grows; investigating worker dispatch_mutex logs to check for deadlock."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 218 req/s (1.78x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5062 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "workers are upstream of replicas, so stalled workers explain zero dispatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if the dispatch_mutex wait is persistent and if there are any related errors or timeouts."
+        }
+       ],
+       "summary": "Workers are stalled waiting on dispatch_mutex, causing zero dispatch and queue buildup; investigating the mutex to determine if it's a deadlock or external dependency issue."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 218 req/s (1.78x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5062 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "workers are upstream of replicas, so stalled workers explain zero dispatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "The workers are stuck on dispatch_mutex, which is an external dependency issue. Need more details to understand the root cause."
+        }
+       ],
+       "summary": "Workers are stalled due to dispatch_mutex, likely an external dependency issue; investigating further."
+      }
+     },
+     {
+      "step": 54,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 218 req/s (1.78x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5062 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "workers are upstream of replicas, so stalled workers explain zero dispatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers are stalled on dispatch_mutex; need to see if it's a deadlock or waiting on identity-service."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "identity-service",
+          "contains": "latency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Workers may be waiting on identity-service; check if it's slow or failing."
+        }
+       ],
+       "summary": "Workers stalled on dispatch_mutex while queue backlog grows; investigating whether identity-service is causing the stall."
+      }
+     },
+     {
+      "step": 54,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 218 req/s (1.78x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5062 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.3
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "workers are upstream of replicas, so stalled workers explain zero dispatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "The workers are stuck on dispatch_mutex, which is a deadlock-like condition. Need to see if there are any other logs around the mutex to understand the cause."
+        }
+       ],
+       "summary": "Workers are stalled on dispatch_mutex, causing zero dispatch and queue backlog; investigating the mutex logs to determine if it's a deadlock or external dependency issue."
+      }
+     },
+     {
+      "step": 54,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 218 req/s (1.78x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5028 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "workers are upstream of replicas, so stalled workers explain zero dispatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "The workers are stuck waiting on dispatch_mutex, which prevents dispatching to replicas. Need to see if there is a deadlock or a stuck thread."
+        }
+       ],
+       "summary": "Workers are stalled waiting on dispatch_mutex, preventing any dispatch to replicas; investigating the mutex to determine if it's a deadlock or external dependency issue."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 214 req/s (1.75x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5017 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "stalled:workers"
+         ],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "workers are upstream of replicas, so stalled workers explain zero dispatch"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Confirm if workers are deadlocked on dispatch_mutex and identify which worker or thread holds it."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if max_concurrency is saturated or misconfigured causing workers to stall."
+        }
+       ],
+       "summary": "Workers appear stalled on dispatch_mutex, likely an external dependency or deadlock; investigating before scaling out further."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 214 req/s (1.75x normal)",
+          "all replicas uniformly slow (p95 ~63s vs normal 3.6s)",
+          "queue backlog 5017 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        }
+       ],
+       "actions": [
+        {
+         "action": "restart",
+         "args": {
+          "target": "workers"
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Workers are stalled on dispatch_mutex with zero dispatch; restart may clear a deadlock."
+        }
+       ],
+       "summary": "Workers appear deadlocked on dispatch_mutex, halting all dispatch; restarting workers to clear the deadlock."
+      }
+     },
+     {
+      "step": 66,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 216 req/s (1.77x normal)",
+          "all replicas uniformly slow (p95 ~31s vs normal 3.6s)",
+          "queue backlog 4866 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "explains": [],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "restart cleared stalled:workers"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "workers max_concurrency=64, but dispatcher 0 tasks dispatched in last 10s",
+          "queue full drops 1125 requests",
+          "gateway upstream timeout after 30000ms",
+          "all replicas slow because no work dispatched"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if the mutex is still stuck after restart, indicating a config issue rather than a crash."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Verify if max_concurrency=64 is too low for the current load, causing workers to stall."
+        }
+       ],
+       "summary": "Workers are not dispatching tasks despite restart, suggesting a config issue with max_concurrency; investigating before changing settings."
+      }
+     },
+     {
+      "step": 66,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 216 req/s (1.77x normal)",
+          "all replicas uniformly slow (p95 ~31s vs normal 3.6s)",
+          "queue backlog 4866 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "restart cleared stalled:workers"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "workers max_concurrency=64, but dispatcher 0 tasks dispatched in last 10s",
+          "queue full drops 1125 requests",
+          "gateway upstream timeout after 30000ms",
+          "all replicas slow because no work dispatched"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch_rps"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if dispatcher is actually dispatching after restart; metrics show dispatch_rps ~180, so maybe the log was stale and the real issue is elsewhere."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "gateway",
+          "contains": "upstream timeout"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Confirm whether timeouts are due to slow replicas or a gateway config issue."
+        }
+       ],
+       "summary": "Workers appear to be dispatching (dispatch_rps ~180) despite earlier mutex warnings, so the bottleneck may be elsewhere; investigating gateway timeouts and worker metrics before changing config."
+      }
+     },
+     {
+      "step": 66,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic is 216 req/s (1.77x normal)",
+          "all replicas uniformly slow (p95 ~31s vs normal 3.6s)",
+          "queue backlog 4866 requests",
+          "workers dispatching 0 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "workers"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "workers dispatching 0 req/s despite queue backlog",
+          "log: 'waiting on dispatch_mutex'",
+          "restart cleared stalled:workers"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "setting": "max_concurrency",
+         "explains": [
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue"
+         ],
+         "evidence": [
+          "workers max_concurrency=64, but dispatcher 0 tasks dispatched in last 10s",
+          "queue full drops 1125 requests",
+          "gateway upstream timeout after 30000ms",
+          "all replicas slow because no work dispatched"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "workers",
+          "contains": "dispatch_mutex"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Confirm whether the dispatcher is still stuck on the mutex after the restart, which would indicate a deadlock or config issue rather than external dependency."
+        }
+       ],
+       "summary": "Workers are dispatching 0 req/s despite a large backlog, causing queue drops and gateway timeouts; investigating the dispatcher mutex to determine if the max_concurrency config is the root cause."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 68,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4. Ledger: H1 overload  on ['gateway', 'workers', 'replicas'] [not_fixed]; H2 external_dependency  on ['workers'] [fixed]; H3 bad_config max_concurrency on ['workers'] [suspected]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 2,
+    "approvals": 1,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 8 symptoms open"
+   }
+  ],
+  "cost": 0.012707478199999997,
+  "calls": 49,
+  "tokens_in": 105060,
+  "tokens_out": 24874
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "traffic_spike",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "worker_deadlock",
+   "step": 39,
+   "target": [
+    "workers"
+   ],
+   "cause": "worker dispatcher deadlocked on dispatch_mutex",
+   "fix": "restart:workers",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

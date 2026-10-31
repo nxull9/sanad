@@ -86,7 +86,7 @@ def _tls():
     return context
 
 
-def _post(body, key, attempts=3):
+def _post(body, key, attempts=6):
     request = urllib.request.Request(URL, data=json.dumps(body).encode(), method="POST", headers={
         "Authorization": f"Bearer {key}", "Content-Type": "application/json",
         "X-Title": "Sanad"})
@@ -98,7 +98,7 @@ def _post(body, key, attempts=3):
             status = getattr(error, "code", None)
             if attempt == attempts - 1 or (status is not None and status < 500 and status != 429):
                 raise
-            time.sleep(2 * (attempt + 1))
+            time.sleep(min(30, 2 ** (attempt + 1)))     # rides out a short network drop
 
 
 def chat(model, messages, budget, max_tokens=1500, reasoning=None):

@@ -1,0 +1,482 @@
+{
+ "score": {
+  "scenario": "h18",
+  "faults": 2,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": 410,
+  "causes": [
+   {
+    "fault": "gpu_thermal",
+    "target": [
+     "gpu-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "bad_worker_concurrency",
+    "target": [
+     "workers"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 2,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.00025,
+  "tokens_in": 96989,
+  "tokens_out": 22329,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "hot:gpu-3",
+     "slow:gateway",
+     "slow:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-3"
+      ],
+      "setting": null,
+      "explains": [
+       "hot:gpu-3",
+       "slow:replica-3"
+      ],
+      "evidence": [
+       "gpu-3 temp 92C (normal <80C)",
+       "gpu-3 clock throttled to 888 MHz (normal 1980 MHz)",
+       "replica-3 p95 latency 9374 ms (fleet normal 3630 ms)"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 40 drain -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:gateway"
+      ],
+      "evidence": [
+       "incoming traffic 123 req/s (1.01x normal)",
+       "gateway p95 latency 9724 ms"
+      ],
+      "confidence": 0.1,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-3"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Replica on gpu-3 is overheating and throttling, causing high latency. Draining moves load to healthy nodes and removes the hot node from service.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-3"
+       ]
+      },
+      "result": "replica-3 moving gpu-3 -> gpu-5; gpu-3 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "hot:gpu-3",
+        "slow:replica-3"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "hot:gpu-3",
+       "slow:gateway",
+       "slow:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-3",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "gpu-3 temp 92C (normal <80C)",
+          "gpu-3 clock throttled to 888 MHz (normal 1980 MHz)",
+          "replica-3 p95 latency 9374 ms (fleet normal 3630 ms)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:gateway"
+         ],
+         "evidence": [
+          "incoming traffic 123 req/s (1.01x normal)",
+          "gateway p95 latency 9724 ms"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-3"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Replica on gpu-3 is overheating and throttling, causing high latency. Draining moves load to healthy nodes and removes the hot node from service."
+        }
+       ],
+       "summary": "Identified GPU overheating on gpu-3 causing replica-3 slowdown; draining gpu-3 to restore performance."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 52,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 78,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "workers"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "stalled:workers"
+      ],
+      "evidence": [
+       "step 75: workers max_concurrency 64 -> 4",
+       "queue backlog 2218, workers dispatching 16 req/s"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 78 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:gateway",
+       "errors:gateway"
+      ],
+      "evidence": [
+       "all replicas p95 ~146s, gateway p95 148s, error rate 12.4%",
+       "incoming traffic 1.06x normal, but workers concurrency reduced to 4"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [],
+      "status": "suspected"
+     }
+    },
+    "actions": [
+     {
+      "step": 78,
+      "action": "rollback",
+      "args": {
+       "key": "max_concurrency",
+       "replicas": []
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Restore workers concurrency to 64 to clear queue backlog and allow replicas to receive work.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": null,
+       "component": [
+        "workers"
+       ]
+      },
+      "result": "workers max_concurrency 4 -> 64",
+      "verified": {
+       "step": 86,
+       "cleared": [
+        "backlog:queue",
+        "stalled:workers"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 78,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "workers"
+         ],
+         "explains": [
+          "backlog:queue",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "step 75: workers max_concurrency 64 -> 4",
+          "queue backlog 2218, workers dispatching 16 req/s"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway"
+         ],
+         "evidence": [
+          "all replicas p95 ~146s, gateway p95 148s, error rate 12.4%",
+          "incoming traffic 1.06x normal, but workers concurrency reduced to 4"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "max_concurrency",
+          "replicas": []
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Restore workers concurrency to 64 to clear queue backlog and allow replicas to receive work."
+        }
+       ],
+       "summary": "Workers concurrency was reduced to 4 at step 75, causing queue backlog and replica slowdowns; rolling back to 64 should restore throughput."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 1,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 88,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0098368142,
+  "calls": 46,
+  "tokens_in": 96989,
+  "tokens_out": 22329
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "gpu_thermal",
+   "step": 37,
+   "target": [
+    "gpu-3"
+   ],
+   "cause": "gpu-3 fan failure: thermal throttling",
+   "fix": "drain:gpu-3",
+   "fixable": true,
+   "needs_human": "replace the fan on the node",
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_worker_concurrency",
+   "step": 75,
+   "target": [
+    "workers"
+   ],
+   "cause": "workers max_concurrency cut to 4",
+   "fix": "rollback:max_concurrency",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 75,
+   "time": "2026-10-30T09:12:30",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 64,
+   "new": 4,
+   "scope": [
+    "workers"
+   ],
+   "author": "ops-bot",
+   "ticket": "OPS-131",
+   "note": "reduce concurrency during db migration"
+  },
+  {
+   "step": 78,
+   "time": "2026-10-30T09:13:00",
+   "component": "workers",
+   "key": "max_concurrency",
+   "old": 4,
+   "new": 64,
+   "scope": [
+    "workers"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

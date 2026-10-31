@@ -1,0 +1,205 @@
+{
+ "score": {
+  "scenario": "h11",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "identity_outage",
+    "target": [
+     "identity-service"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 0,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 1,
+  "strong_calls": 0,
+  "cost": 0.000193,
+  "tokens_in": 12002,
+  "tokens_out": 1955,
+  "escalations": [
+   {
+    "step": 38,
+    "team": "identity",
+    "summary": "Gateway error rate 62% due to 503 from identity-service (connection refused). The identity service is down or unreachable. Please investigate and restore.",
+    "hypothesis": "H1",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "errors:gateway"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "gateway logs show 503 from identity-service: connection refused",
+       "identity-service is owned by identity team, not us"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "Gateway error rate 62% due to 503 from identity-service (connection refused). The identity service is down or unreachable. Please investigate and restore."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "The root cause is an external service not under our control; we cannot fix it directly.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity"
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway: error rate 62.0% (normal 0.07%)"
+         ],
+         "evidence": [
+          "gateway logs show 503 from identity-service: connection refused",
+          "identity-service is owned by identity team, not us"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "Gateway error rate 62% due to 503 from identity-service (connection refused). The identity service is down or unreachable. Please investigate and restore."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "The root cause is an external service not under our control; we cannot fix it directly."
+        }
+       ],
+       "summary": "Escalating to identity team: gateway errors are caused by identity-service returning connection refused."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 38,
+      "team": "identity",
+      "summary": "Gateway error rate 62% due to 503 from identity-service (connection refused). The identity service is down or unreachable. Please investigate and restore.",
+      "hypothesis": "H1",
+      "automatic": false
+     }
+    ],
+    "changes": 0,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 1 symptoms open"
+   }
+  ],
+  "cost": 0.001161266,
+  "calls": 7,
+  "tokens_in": 12002,
+  "tokens_out": 1955
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "identity_outage",
+   "step": 35,
+   "target": [
+    "identity-service"
+   ],
+   "cause": "identity-service (owned by the identity team) is down",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "page the identity team",
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 37,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

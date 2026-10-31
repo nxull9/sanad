@@ -1,0 +1,668 @@
+{
+ "score": {
+  "scenario": "h21",
+  "faults": 3,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-1"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "gpu_thermal",
+    "target": [
+     "gpu-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "identity_outage",
+    "target": [
+     "identity-service"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 3,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 2,
+  "approvals": 0,
+  "model_calls": 4,
+  "strong_calls": 2,
+  "cost": 0.000716,
+  "tokens_in": 142752,
+  "tokens_out": 33841,
+  "escalations": [
+   {
+    "step": 54,
+    "team": "identity team",
+    "summary": "identity-service is returning 503 connection refused, causing 62% gateway errors and high latency; this is an external dependency issue that needs their attention",
+    "hypothesis": "H3",
+    "automatic": false
+   },
+   {
+    "step": 78,
+    "team": "hardware team",
+    "summary": "gpu-1 has persistent ECC errors (Xid 94) that survive drains; likely hardware fault requiring physical replacement or node-level investigation.",
+    "hypothesis": "H1",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "ecc:gpu-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "gpu-1"
+      ],
+      "setting": null,
+      "explains": [
+       "ecc:gpu-1"
+      ],
+      "evidence": [
+       "gpu-1 logged 1 new ECC error in last 2 steps",
+       "Xid 94 contained ECC error",
+       "drains at step 40 and 64 did not clear ECC errors"
+      ],
+      "confidence": 0.8,
+      "attempts": 2,
+      "history": [
+       "step 40 drain -> not_fixed",
+       "step 64 drain -> not_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-4"
+      ],
+      "setting": null,
+      "explains": [
+       "hot:gpu-4",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "gpu-4 drained, no longer in service",
+       "temperature and latency cleared"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [
+       "step 54 drain -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "gateway error rate 62%",
+       "503 connection refused from identity-service",
+       "escalated to identity team"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "ECC errors indicate hardware failure on gpu-1; draining moves traffic to healthy nodes and isolates the faulty node.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [],
+       "still_open": []
+      },
+      "undone": "replica-1 moved back to gpu-1"
+     },
+     {
+      "step": 54,
+      "action": "drain",
+      "args": {
+       "node": "gpu-4"
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "gpu-4 is overheating and throttling, causing replica-4 to be slow; drain moves replica-4 to a spare node to restore performance",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-4"
+       ]
+      },
+      "result": "replica-4 moving gpu-4 -> gpu-5; gpu-4 drained",
+      "verified": {
+       "step": 64,
+       "cleared": [
+        "hot:gpu-4",
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 54,
+      "action": "escalate",
+      "args": {
+       "team": "identity team",
+       "summary": "identity-service is returning 503 connection refused, causing 62% gateway errors and high latency; this is an external dependency issue that needs their attention"
+      },
+      "hypothesis": "H3",
+      "purpose": "escalate",
+      "why": "identity-service failures are not fixable by our platform; escalate to the owning team",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity team"
+     },
+     {
+      "step": 64,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "ECC errors persist on gpu-1 despite previous drain attempt; need to move replica to healthy node and isolate faulty hardware for maintenance.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-6; gpu-1 drained",
+      "verified": {
+       "step": 74,
+       "cleared": [],
+       "still_open": []
+      },
+      "undone": "replica-1 moved back to gpu-1"
+     },
+     {
+      "step": 78,
+      "action": "escalate",
+      "args": {
+       "team": "hardware team",
+       "summary": "gpu-1 has persistent ECC errors (Xid 94) that survive drains; likely hardware fault requiring physical replacement or node-level investigation."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Drains did not fix ECC errors; hardware intervention needed.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "gpu-1"
+       ]
+      },
+      "result": "handed to hardware team"
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "(UNEXPLAINED) ecc:gpu-1: gpu-1 logged 2 new ECC errors in the last 10 steps"
+         ],
+         "evidence": [
+          "gpu-1 logged 2 new ECC errors in the last 10 steps"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "ECC errors indicate hardware failure on gpu-1; draining moves traffic to healthy nodes and isolates the faulty node."
+        }
+       ],
+       "summary": "Draining gpu-1 due to detected ECC errors indicating hardware failure."
+      }
+     },
+     {
+      "step": 54,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4",
+       "slow:gateway",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "gpu-1 logged 2 new ECC errors in the last 10 steps"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "gpu-4 at 90 C, clock 891 MHz (normal under 80 C, 1980 MHz)",
+          "replica-4 p95 latency 8899 ms (fleet normal 3642 ms)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gateway error rate 62.0% (normal 0.07%)",
+          "gateway p95 latency 9170 ms (normal 3647 ms)",
+          "5x ERROR gateway: 503 from identity-service: connection refused"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-4"
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "gpu-4 is overheating and throttling, causing replica-4 to be slow; drain moves replica-4 to a spare node to restore performance"
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity team",
+          "summary": "identity-service is returning 503 connection refused, causing 62% gateway errors and high latency; this is an external dependency issue that needs their attention"
+         },
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "identity-service failures are not fixable by our platform; escalate to the owning team"
+        }
+       ],
+       "summary": "Draining overheating gpu-4 to restore replica-4 performance, and escalating identity-service connection refused to the identity team."
+      }
+     },
+     {
+      "step": 64,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-1",
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "(UNEXPLAINED) ecc:gpu-1"
+         ],
+         "evidence": [
+          "gpu-1 logged 2 new ECC errors in the last 6 steps",
+          "Previous drain of gpu-1 (step 40) did not fix the issue, suggesting persistent hardware fault or node-level corruption rather than transient thermal throttling"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "gpu-4 at 90 C, clock 891 MHz (normal under 80 C, 1980 MHz)",
+          "replica-4 p95 latency 8899 ms (fleet normal 3642 ms)"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gateway error rate 62.0% (normal 0.07%)",
+          "gateway p95 latency 9170 ms (normal 3647 ms)",
+          "5x ERROR gateway: 503 from identity-service: connection refused"
+         ],
+         "status": "escalated",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "ECC errors persist on gpu-1 despite previous drain attempt; need to move replica to healthy node and isolate faulty hardware for maintenance."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "gpu-1",
+          "contains": "Xid 94"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Confirm if Xid 94 errors are recurring or escalating to determine severity and potential data corruption impact."
+        }
+       ],
+       "summary": "Draining gpu-1 due to persistent ECC errors and investigating log details; identity-service escalation remains active."
+      }
+     },
+     {
+      "step": 78,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "ecc:gpu-1",
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "gpu-1"
+         ],
+         "setting": null,
+         "explains": [
+          "ecc:gpu-1"
+         ],
+         "evidence": [
+          "gpu-1 logged 1 new ECC error in last 2 steps",
+          "Xid 94 contained ECC error",
+          "drains at step 40 and 64 did not clear ECC errors"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "gpu-4 drained, no longer in service",
+          "temperature and latency cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.95
+        },
+        {
+         "id": "H3",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gateway error rate 62%",
+          "503 connection refused from identity-service",
+          "escalated to identity team"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "hardware team",
+          "summary": "gpu-1 has persistent ECC errors (Xid 94) that survive drains; likely hardware fault requiring physical replacement or node-level investigation."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Drains did not fix ECC errors; hardware intervention needed."
+        }
+       ],
+       "summary": "Escalating gpu-1 persistent ECC errors to hardware team while identity-service issue remains with that team."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 54,
+      "team": "identity team",
+      "summary": "identity-service is returning 503 connection refused, causing 62% gateway errors and high latency; this is an external dependency issue that needs their attention",
+      "hypothesis": "H3",
+      "automatic": false
+     },
+     {
+      "step": 78,
+      "team": "hardware team",
+      "summary": "gpu-1 has persistent ECC errors (Xid 94) that survive drains; likely hardware fault requiring physical replacement or node-level investigation.",
+      "hypothesis": "H1",
+      "automatic": false
+     }
+    ],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 2 symptoms open"
+   }
+  ],
+  "cost": 0.016801395600000005,
+  "calls": 66,
+  "tokens_in": 142752,
+  "tokens_out": 33841
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 36,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "gpu_corruption",
+   "step": 37,
+   "target": [
+    "gpu-1"
+   ],
+   "cause": "gpu-1 silent data corruption",
+   "fix": "drain:gpu-1",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "gpu_thermal",
+   "step": 42,
+   "target": [
+    "gpu-4"
+   ],
+   "cause": "gpu-4 fan failure: thermal throttling",
+   "fix": "drain:gpu-4",
+   "fixable": true,
+   "needs_human": "replace the fan on the node",
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "identity_outage",
+   "step": 49,
+   "target": [
+    "identity-service"
+   ],
+   "cause": "identity-service (owned by the identity team) is down",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "page the identity team",
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 36,
+   "time": "2026-10-30T09:06:00",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  }
+ ]
+}

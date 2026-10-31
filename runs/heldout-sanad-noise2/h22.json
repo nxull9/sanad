@@ -1,0 +1,2008 @@
+{
+ "score": {
+  "scenario": "h22",
+  "faults": 3,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "low_memory_limit",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "memory_leak",
+    "target": [],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 4,
+  "unneeded_changes": 0,
+  "blocked": 4,
+  "undone": 2,
+  "approvals": 0,
+  "model_calls": 15,
+  "strong_calls": 12,
+  "cost": 0.005639,
+  "tokens_in": 201459,
+  "tokens_out": 50294,
+  "escalations": [
+   {
+    "step": 120,
+    "team": "infra",
+    "summary": "Overload persists after two scale_out attempts (max allowed). Incoming traffic 1.89x normal, all replicas slow, queue backlog 3816. Need additional capacity or traffic shaping.",
+    "hypothesis": "H1",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "restarting:replica-1",
+     "restarting:replica-2",
+     "restarting:replica-3",
+     "restarting:replica-4",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4",
+     "stalled:workers"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [
+       "restarting:replica-1",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "restarting:replica-4",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:gateway",
+       "errors:gateway",
+       "backlog:queue",
+       "stalled:workers"
+      ],
+      "evidence": [
+       "step 37 memory_limit_gb 80->40 on all replicas by ci-bot REL-2291",
+       "OOMKilled while loading weights: limit 40GB, need 68GB on all four replicas from step 37",
+       "all replicas crash-looping => no capacity => backlog 1944, workers dispatching stalled, gateway timeouts 23.8% errors"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 40 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "evidence": [
+       "All 4 replicas show rising memory usage (69-70%) despite rollback to normal memory_limit_gb (80GB)",
+       "Memory is rising steadily (~1.8-2.0 points/step) indicating a leak or sustained high load",
+       "Step 38 deployed server_build serve-1.7.2 -> serve-1.8.0 on all replicas simultaneously with the config change",
+       "The memory leak correlates with the new server build version which is active on all affected nodes"
+      ],
+      "confidence": 0.85,
+      "attempts": 0,
+      "history": [
+       "step 48 rollback -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "memory_limit 40GB is below 68GB needed; OOMKilled all replicas. Restore 80GB.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 48,
+       "cleared": [
+        "backlog:queue",
+        "errors:gateway",
+        "restarting:replica-1",
+        "restarting:replica-2",
+        "restarting:replica-3",
+        "restarting:replica-4",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4",
+        "stalled:workers"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 48,
+      "action": "rollback",
+      "args": {
+       "key": "server_build",
+       "replicas": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Roll back server_build to serve-1.7.2 to test if the memory leak is caused by the new release, as H2 suspects.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "server_build",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4']",
+      "verified": {
+       "step": 56,
+       "cleared": [
+        "memory:replica-1",
+        "memory:replica-2",
+        "memory:replica-3",
+        "memory:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "restarting:replica-1",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "restarting:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "stalled:workers"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-1",
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "restarting:replica-4",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway",
+          "backlog:queue",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "step 37 memory_limit_gb 80->40 on all replicas by ci-bot REL-2291",
+          "OOMKilled while loading weights: limit 40GB, need 68GB on all four replicas from step 37",
+          "all replicas crash-looping => no capacity => backlog 1944, workers dispatching stalled, gateway timeouts 23.8% errors"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "memory_limit 40GB is below 68GB needed; OOMKilled all replicas. Restore 80GB."
+        }
+       ],
+       "summary": "REL-2291 right-sized memory to 40GB but weights need 68GB, OOMKilling all replicas and causing backlog/timeouts; rolling back memory_limit_gb."
+      }
+     },
+     {
+      "step": 48,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-1",
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "restarting:replica-4",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway",
+          "backlog:queue",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "step 37 memory_limit_gb 80->40 on all replicas by ci-bot REL-2291",
+          "OOMKilled while loading weights: limit 40GB, need 68GB on all four replicas from step 37",
+          "all replicas crash-looping => no capacity => backlog 1944, workers dispatching stalled, gateway timeouts 23.8% errors"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "memory:replica-1",
+          "memory:replica-2",
+          "memory:replica-3",
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "All 4 replicas show rising memory usage (69-70%) despite rollback to normal memory_limit_gb (80GB)",
+          "Memory is rising steadily (~1.8-2.0 points/step) indicating a leak or sustained high load",
+          "No other symptoms (latency, errors) are currently open, suggesting the issue is isolated to resource consumption"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-1",
+          "contains": "memory"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check for specific memory allocation errors or leaks in replica logs to determine if it's a code bug or external factor."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-1",
+          "contains": "gpu_memory"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Distinguish between host memory and GPU memory usage to narrow down the source of the leak."
+        }
+       ],
+       "summary": "Investigating persistent memory rise on all replicas after successful rollback of the OOM config fix."
+      }
+     },
+     {
+      "step": 48,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "memory:replica-1",
+       "memory:replica-2",
+       "memory:replica-3",
+       "memory:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-1",
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "restarting:replica-4",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:gateway",
+          "errors:gateway",
+          "backlog:queue",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "step 37 memory_limit_gb 80->40 on all replicas by ci-bot REL-2291",
+          "OOMKilled while loading weights: limit 40GB, need 68GB on all four replicas from step 37",
+          "all replicas crash-looping => no capacity => backlog 1944, workers dispatching stalled, gateway timeouts 23.8% errors"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "memory:replica-1",
+          "memory:replica-2",
+          "memory:replica-3",
+          "memory:replica-4"
+         ],
+         "evidence": [
+          "All 4 replicas show rising memory usage (69-70%) despite rollback to normal memory_limit_gb (80GB)",
+          "Memory is rising steadily (~1.8-2.0 points/step) indicating a leak or sustained high load",
+          "Step 38 deployed server_build serve-1.7.2 -> serve-1.8.0 on all replicas simultaneously with the config change",
+          "The memory leak correlates with the new server build version which is active on all affected nodes"
+         ],
+         "status": "suspected",
+         "confidence": 0.85
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "server_build",
+          "replicas": [
+           "replica-1",
+           "replica-2",
+           "replica-3",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Roll back server_build to serve-1.7.2 to test if the memory leak is caused by the new release, as H2 suspects."
+        }
+       ],
+       "summary": "Suspecting a memory leak in the newly deployed server build (serve-1.8.0) introduced at step 38; rolling back server_build on all replicas to fix the rising memory usage."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 58,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 90,
+    "first_symptoms": [
+     "backlog:queue",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-3",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "overload",
+      "component": [
+       "workers",
+       "replicas"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "incoming traffic 226 req/s is 1.84x normal",
+       "all replicas slow simultaneously",
+       "queue backlog 5025 requests, oldest waiting 7s",
+       "scaling out twice did not clear backlog",
+       "gateway upstream timeouts after 30000ms while queue saturated"
+      ],
+      "confidence": 0.55,
+      "attempts": 2,
+      "history": [
+       "step 90 scale_out -> not_fixed",
+       "step 104 scale_out -> not_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_release",
+      "component": [
+       "replicas"
+      ],
+      "setting": "server_build",
+      "explains": [
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "server_build changed to serve-1.8.0 at step 38",
+       "rollback to serve-1.7.2 at step 48",
+       "symptoms persist after rollback"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "gateway"
+      ],
+      "setting": "timeout_ms",
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "gateway timeout_ms 30000ms",
+       "upstream timeout errors at step 120",
+       "no earlier timeout_ms value to roll back to",
+       "rollback impossible"
+      ],
+      "confidence": 0.5,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     }
+    },
+    "actions": [
+     {
+      "step": 90,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is 1.83x normal and queue is backing up; adding capacity will reduce latency and clear the backlog.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 100,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "removed ['replica-5', 'replica-6']"
+     },
+     {
+      "step": 104,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is 1.86x normal and all replicas are slow; adding two more replicas on spare nodes to increase capacity.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 114,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "removed ['replica-5', 'replica-6']"
+     },
+     {
+      "step": 118,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Previous scale outs were undone because they didn't clear symptoms, but traffic is still high (1.90x normal) and queue backlog is growing. Adding more replicas should increase capacity and reduce latency.",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: scale_out {'count': 2} already ran 2 times; it is not working, rethink or escalate"
+     },
+     {
+      "step": 120,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Overload persists after two scale_out attempts (max allowed). Incoming traffic 1.89x normal, all replicas slow, queue backlog 3816. Need additional capacity or traffic shaping."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "scale_out exhausted; overload not resolved; need human intervention for capacity or traffic management.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "handed to infra"
+     },
+     {
+      "step": 122,
+      "action": "rollback",
+      "args": {
+       "key": "timeout_ms",
+       "replicas": []
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Gateway timeout is 30000 ms, but p95 latency is 28535 ms, causing timeouts and drops. Rollback to previous value (likely higher) to reduce errors and drops.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "timeout_ms",
+       "component": [
+        "gateway"
+       ]
+      },
+      "result": "no earlier gateway timeout_ms to roll back to"
+     },
+     {
+      "step": 124,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-1",
+       "weight": 0
+      },
+      "hypothesis": "H1",
+      "purpose": "experiment",
+      "why": "test if isolating a replica changes symptoms; if errors persist, cause is not replica load",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: H1 has had 2 fixes that did not work; escalate it"
+     },
+     {
+      "step": 124,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-2",
+       "weight": 0
+      },
+      "hypothesis": "H1",
+      "purpose": "experiment",
+      "why": "reduce load on two replicas to see if gateway timeout errors drop; if not, overload is not the root cause of errors",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: H1 has had 2 fixes that did not work; escalate it"
+     },
+     {
+      "step": 126,
+      "action": "rollback",
+      "args": {
+       "key": "timeout_ms",
+       "replicas": [
+        "gateway"
+       ]
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "gateway timeout_ms is 30000 ms while upstream timeout errors and drops occur; reduce timeout_ms to prevent queue drops and reduce error rate",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "timeout_ms",
+       "component": [
+        "gateway"
+       ]
+      },
+      "result": "no earlier gateway timeout_ms to roll back to"
+     },
+     {
+      "step": 128,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is 1.87x normal and all replicas are slow; previous scale_outs did not fix, but adding more capacity is the only way to absorb overload since set_weight was blocked.",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: scale_out {'count': 2} already ran 2 times; it is not working, rethink or escalate"
+     },
+     {
+      "step": 130,
+      "action": "rollback",
+      "args": {
+       "key": "timeout_ms",
+       "replicas": []
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Gateway timeout_ms is 30000 ms, causing upstream timeouts and errors; rollback to previous value (likely lower) to reduce timeouts and queue drops.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "timeout_ms",
+       "component": [
+        "gateway"
+       ]
+      },
+      "result": "no earlier gateway timeout_ms to roll back to"
+     },
+     {
+      "step": 132,
+      "action": "escalate",
+      "args": {
+       "team": "identity-service",
+       "summary": "Gateway error rate 33.1% and 30s upstream timeouts persist; queue backlog 5025 with drops 1409/3 steps despite two scale_outs. Traffic is 1.84x normal - if identity-service is queuing or blocking before the queue, that would explain sustained backlog. Please check identity-service health and its rate/latency to the queue."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "backlog persists after scale_out; upstream external dependency may be throttling",
+      "ran": false,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "replicas"
+       ]
+      },
+      "result": "H1 was already handed to people"
+     }
+    ],
+    "turns": [
+     {
+      "step": 90,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 225 req/s is 1.83x normal",
+          "all replicas are slow simultaneously",
+          "queue backlog is growing (1300 requests)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "model-server"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "server_build was changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 happened at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is 1.83x normal and queue is backing up; adding capacity will reduce latency and clear the backlog."
+        }
+       ],
+       "summary": "The system is overloaded with 1.83x normal traffic causing high latency and queue backlog across all replicas; scaling out by 2 replicas is required to handle the load."
+      }
+     },
+     {
+      "step": 104,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 229 req/s is 1.86x normal",
+          "all replicas are slow simultaneously",
+          "queue backlog is growing (2075 requests)"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "model-server"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "server_build was changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 happened at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is 1.86x normal and all replicas are slow; adding two more replicas on spare nodes to increase capacity."
+        }
+       ],
+       "summary": "Scaling out by 2 replicas to handle overload from 1.86x normal traffic."
+      }
+     },
+     {
+      "step": 118,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 234 req/s is 1.90x normal",
+          "all replicas are slow simultaneously",
+          "queue backlog is growing (3066 requests)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Previous scale outs were undone because they didn't clear symptoms, but traffic is still high (1.90x normal) and queue backlog is growing. Adding more replicas should increase capacity and reduce latency."
+        }
+       ],
+       "summary": "Traffic remains 1.90x normal with all replicas slow and queue backlog growing; scaling out again to add capacity."
+      }
+     },
+     {
+      "step": 120,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 232 req/s is 1.89x normal",
+          "all replicas are slow simultaneously",
+          "queue backlog is growing (3816 requests)"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Overload persists after two scale_out attempts (max allowed). Incoming traffic 1.89x normal, all replicas slow, queue backlog 3816. Need additional capacity or traffic shaping."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "scale_out exhausted; overload not resolved; need human intervention for capacity or traffic management."
+        }
+       ],
+       "summary": "Escalating overload to infra team as scale_out attempts have been exhausted and symptoms persist."
+      }
+     },
+     {
+      "step": 122,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 229 req/s is 1.86x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 4767 requests"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "model-server"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "server_build changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "drops:queue"
+         ],
+         "evidence": [
+          "gateway timeout_ms is 30000 ms",
+          "gateway error rate 9.4% (normal 0.08%)",
+          "queue full drops 228 requests in last 3 steps",
+          "upstream timeout errors seen at step 120"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "timeout_ms",
+          "replicas": []
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Gateway timeout is 30000 ms, but p95 latency is 28535 ms, causing timeouts and drops. Rollback to previous value (likely higher) to reduce errors and drops."
+        }
+       ],
+       "summary": "Overload persists after max scale_out attempts; escalating to infra. Meanwhile, gateway timeout_ms may be too low causing errors and drops; rolling back to previous value."
+      }
+     },
+     {
+      "step": 124,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 234 req/s is 1.91x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 5101 requests"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "model-server"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "server_build changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "drops:queue"
+         ],
+         "evidence": [
+          "gateway timeout_ms is 30000 ms",
+          "gateway error rate 31.6% (normal 0.08%)",
+          "queue full drops 1367 requests in last 3 steps",
+          "upstream timeout errors seen at step 120"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "gateway",
+          "contains": "timeout"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if gateway timeouts are due to slow replicas or misconfiguration; timeout_ms=30000 matches p95 latency ~31s, causing timeouts."
+        }
+       ],
+       "summary": "Overload persists with high traffic and all replicas slow; gateway timeout_ms may be too low for current latency, causing errors and drops."
+      }
+     },
+     {
+      "step": 124,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 234 req/s is 1.91x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 5101 requests"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "model-server"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "server_build changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "drops:queue"
+         ],
+         "evidence": [
+          "gateway timeout_ms is 30000 ms",
+          "gateway error rate 31.6% (normal 0.08%)",
+          "queue full drops 1367 requests in last 3 steps",
+          "upstream timeout errors seen at step 120"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-1",
+          "weight": 0
+         },
+         "hypothesis": "H1",
+         "purpose": "experiment",
+         "why": "test if isolating a replica changes symptoms; if errors persist, cause is not replica load"
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-2",
+          "weight": 0
+         },
+         "hypothesis": "H1",
+         "purpose": "experiment",
+         "why": "reduce load on two replicas to see if gateway timeout errors drop; if not, overload is not the root cause of errors"
+        }
+       ],
+       "summary": "Incoming traffic is 1.91x normal and all replicas are slow, supporting overload; two scale_outs have not fixed it. Gateway timeouts at 30 seconds cause queue drops and high error rate. I will temporarily zero weight on two replicas to test if reducing replica load lowers gateway errors, which would confirm overload as the main driver of errors."
+      }
+     },
+     {
+      "step": 126,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 234 req/s is 1.91x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 5004 requests"
+         ],
+         "status": "escalated",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replicas"
+         ],
+         "setting": "server_build",
+         "explains": [],
+         "evidence": [
+          "server_build changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.99
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "drops:queue"
+         ],
+         "evidence": [
+          "gateway timeout_ms is 30000 ms",
+          "gateway error rate 33.8% (normal 0.08%)",
+          "queue full drops 1478 requests in last 3 steps",
+          "upstream timeout errors seen at step 120"
+         ],
+         "status": "suspected",
+         "confidence": 0.85
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "timeout_ms",
+          "replicas": [
+           "gateway"
+          ]
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "gateway timeout_ms is 30000 ms while upstream timeout errors and drops occur; reduce timeout_ms to prevent queue drops and reduce error rate"
+        }
+       ],
+       "summary": "Investigate and fix gateway timeout_ms to reduce queue drops and errors while overload remains escalated."
+      }
+     },
+     {
+      "step": 128,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 229 req/s is 1.87x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 4933 requests"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "drops:queue"
+         ],
+         "evidence": [
+          "gateway timeout_ms is 30000 ms",
+          "gateway error rate 33.4% (normal 0.08%)",
+          "queue full drops 1440 requests in last 3 steps",
+          "upstream timeout errors seen at step 120"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is 1.87x normal and all replicas are slow; previous scale_outs did not fix, but adding more capacity is the only way to absorb overload since set_weight was blocked."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "vectordb",
+          "contains": "latency"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "All replicas slow and queue backlog persists; check if vector database is a shared bottleneck causing slow responses."
+        }
+       ],
+       "summary": "Overload remains the primary suspect; adding two replicas to increase capacity and inspecting vector database latency to rule out a shared bottleneck."
+      }
+     },
+     {
+      "step": 130,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 223 req/s is 1.82x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 4926 requests"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replicas"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "server_build changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "drops:queue"
+         ],
+         "evidence": [
+          "gateway timeout_ms is 30000 ms",
+          "gateway error rate 32.1% (normal 0.08%)",
+          "queue full drops 1309 requests in last 3 steps",
+          "upstream timeout errors seen at step 120"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "gateway",
+          "contains": "upstream timeout"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if timeout errors are from identity-service or replicas to confirm root cause"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue depth"
+         },
+         "hypothesis": "H1",
+         "why": "Check if workers are saturated or if queue is just backing up due to slow replicas"
+        }
+       ],
+       "summary": "Overload and gateway timeout config are suspected; scale_out blocked, so investigating logs and metrics to decide next fix."
+      }
+     },
+     {
+      "step": 130,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 223 req/s is 1.82x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 4926 requests"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replicas"
+         ],
+         "setting": "server_build",
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "server_build changed to serve-1.8.0 at step 38",
+          "rollback to serve-1.7.2 at step 48",
+          "symptoms persist after rollback"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway",
+          "drops:queue"
+         ],
+         "evidence": [
+          "gateway timeout_ms is 30000 ms",
+          "gateway error rate 32.1% (normal 0.08%)",
+          "queue full drops 1309 requests in last 3 steps",
+          "upstream timeout errors seen at step 120"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "timeout_ms",
+          "replicas": []
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Gateway timeout_ms is 30000 ms, causing upstream timeouts and errors; rollback to previous value (likely lower) to reduce timeouts and queue drops."
+        }
+       ],
+       "summary": "Rolling back gateway timeout_ms to reduce upstream timeouts and queue drops, as overload alone does not explain the error rate."
+      }
+     },
+     {
+      "step": 132,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "workers",
+          "replicas"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 226 req/s is 1.84x normal",
+          "all replicas slow simultaneously",
+          "queue backlog 5025 requests, oldest waiting 7s",
+          "scaling out twice did not clear backlog",
+          "gateway upstream timeouts after 30000ms while queue saturated"
+         ],
+         "status": "suspected",
+         "confidence": 0.55
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "gateway"
+         ],
+         "setting": "timeout_ms",
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "gateway timeout_ms 30000ms",
+          "upstream timeout errors at step 120",
+          "no earlier timeout_ms value to roll back to",
+          "rollback impossible"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity-service",
+          "summary": "Gateway error rate 33.1% and 30s upstream timeouts persist; queue backlog 5025 with drops 1409/3 steps despite two scale_outs. Traffic is 1.84x normal - if identity-service is queuing or blocking before the queue, that would explain sustained backlog. Please check identity-service health and its rate/latency to the queue."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "backlog persists after scale_out; upstream external dependency may be throttling"
+        }
+       ],
+       "summary": "Sustained overload with backlog and gateway timeouts not cleared by scale_out; escalating identity-service as possible upstream bottleneck while noting timeout_ms cannot be rolled back."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 120,
+      "team": "infra",
+      "summary": "Overload persists after two scale_out attempts (max allowed). Incoming traffic 1.89x normal, all replicas slow, queue backlog 3816. Need additional capacity or traffic shaping.",
+      "hypothesis": "H1",
+      "automatic": false
+     }
+    ],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 8 symptoms open"
+   }
+  ],
+  "cost": 0.028543390799999988,
+  "calls": 89,
+  "tokens_in": 201459,
+  "tokens_out": 50294
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 34,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "low_memory_limit",
+   "step": 37,
+   "target": [],
+   "cause": "memory_limit_gb 40 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "memory_leak",
+   "step": 38,
+   "target": [],
+   "cause": "server_build serve-1.8.0 deployed to replica-1, replica-2, replica-3, replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "traffic_spike",
+   "step": 86,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 34,
+   "time": "2026-10-30T09:05:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 48,
+   "time": "2026-10-30T09:08:00",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.8.0",
+   "new": "serve-1.7.2",
+   "scope": [
+    "replica-1",
+    "replica-2",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

@@ -1,0 +1,542 @@
+{
+ "score": {
+  "scenario": "h06",
+  "faults": 1,
+  "success": true,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": 380,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 2,
+  "blocked": 0,
+  "undone": 2,
+  "approvals": 1,
+  "model_calls": 3,
+  "strong_calls": 2,
+  "cost": 0.000961,
+  "tokens_in": 8425,
+  "tokens_out": 2196,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-3"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-3"
+      ],
+      "evidence": [
+       "replica-1 and replica-3 return '15 minutes' for the canary question.",
+       "replica-1 and replica-3 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+      ],
+      "confidence": 0.1,
+      "attempts": 1,
+      "history": [
+       "step 40 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "bad_release",
+      "component": [
+       "replica-2",
+       "replica-4"
+      ],
+      "setting": "model_version",
+      "explains": [
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "replica-2 and replica-4 return '30 minutes' for the canary question.",
+       "replica-2 and replica-4 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+      ],
+      "confidence": 0.1,
+      "attempts": 1,
+      "history": [
+       "step 40 rollback -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "All replicas fail Arabic and English retrieval canary questions.",
+       "Rolling back model_version on all replicas did not fix the issue.",
+       "No recent changes to replicas other than the rollback attempt.",
+       "The vector database is shared by all replicas."
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [
+       "step 52 rebuild_index -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-1",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Roll back model version on replicas returning incorrect '15 min' answer to previous known good state.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-1",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-1', 'replica-3']",
+      "verified": {
+       "step": 48,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-3"
+       ]
+      },
+      "undone": "set model_version on ['replica-1', 'replica-3']"
+     },
+     {
+      "step": 40,
+      "action": "rollback",
+      "args": {
+       "key": "model_version",
+       "replicas": [
+        "replica-2",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Roll back model version on replicas returning incorrect '30 min' answer to previous known good state.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "model_version",
+       "component": [
+        "replica-2",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back model_version on ['replica-2', 'replica-4']",
+      "verified": {
+       "step": 48,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set model_version on ['replica-2', 'replica-4']"
+     },
+     {
+      "step": 52,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "All replicas fail retrieval canaries, and rolling back model_version did not help. The shared vector database is the common point, so rebuilding the index may fix the corruption.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 80,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-3",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-3"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-1 and replica-3 return '15 minutes' for the canary question.",
+          "replica-1 and replica-3 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-2",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-2 and replica-4 return '30 minutes' for the canary question.",
+          "replica-2 and replica-4 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-1",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Roll back model version on replicas returning incorrect '15 min' answer to previous known good state."
+        },
+        {
+         "action": "rollback",
+         "args": {
+          "key": "model_version",
+          "replicas": [
+           "replica-2",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Roll back model version on replicas returning incorrect '30 min' answer to previous known good state."
+        }
+       ],
+       "summary": "All four replicas are answering incorrectly with two distinct wrong values; rolling back the model version on all replicas to restore correct answers."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-3"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-1 and replica-3 return '15 minutes' for the canary question.",
+          "replica-1 and replica-3 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-2",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-2 and replica-4 return '30 minutes' for the canary question.",
+          "replica-2 and replica-4 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas fail Arabic and English retrieval canary questions.",
+          "Rolling back model_version on all replicas did not fix the issue.",
+          "No recent changes to replicas other than the rollback attempt.",
+          "The vector database is shared by all replicas."
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "vectordb",
+          "contains": "retrieval"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if the vector database is returning incorrect results for all replicas."
+        }
+       ],
+       "summary": "Rolling back model_version on all replicas did not fix wrong answers; suspecting vector database corruption as the common cause."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-3"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-3"
+         ],
+         "evidence": [
+          "replica-1 and replica-3 return '15 minutes' for the canary question.",
+          "replica-1 and replica-3 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        },
+        {
+         "id": "H2",
+         "type": "bad_release",
+         "component": [
+          "replica-2",
+          "replica-4"
+         ],
+         "setting": "model_version",
+         "explains": [
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-2 and replica-4 return '30 minutes' for the canary question.",
+          "replica-2 and replica-4 share identical settings (allam-34b-v2.3, chat-tpl-12, fp8, tok-2.1, serve-1.7.2)."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.1
+        },
+        {
+         "id": "H3",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-3",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "All replicas fail Arabic and English retrieval canary questions.",
+          "Rolling back model_version on all replicas did not fix the issue.",
+          "No recent changes to replicas other than the rollback attempt.",
+          "The vector database is shared by all replicas."
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "All replicas fail retrieval canaries, and rolling back model_version did not help. The shared vector database is the common point, so rebuilding the index may fix the corruption."
+        }
+       ],
+       "summary": "Rebuilding the vector index to address suspected index corruption affecting all replicas."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [],
+    "changes": 3,
+    "approvals": 1,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 82,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   }
+  ],
+  "cost": 0.0010525875,
+  "calls": 4,
+  "tokens_in": 8425,
+  "tokens_out": 2196
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "index_corruption",
+   "step": 34,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.2",
+   "scope": [
+    "replica-1",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 40,
+   "time": "2026-10-30T09:06:40",
+   "component": "model-server",
+   "key": "model_version",
+   "old": "allam-34b-v2.3",
+   "new": "allam-34b-v2.2",
+   "scope": [
+    "replica-2",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

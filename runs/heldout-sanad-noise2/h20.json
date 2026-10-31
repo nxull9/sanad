@@ -1,0 +1,1215 @@
+{
+ "score": {
+  "scenario": "h20",
+  "faults": 3,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "rack_power",
+    "target": [
+     "rack-a"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "bad_tokenizer",
+    "target": [
+     "replica-1",
+     "replica-3",
+     "replica-4"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 5,
+  "unneeded_changes": 0,
+  "blocked": 1,
+  "undone": 1,
+  "approvals": 1,
+  "model_calls": 5,
+  "strong_calls": 5,
+  "cost": 0.002645,
+  "tokens_in": 162290,
+  "tokens_out": 41850,
+  "escalations": [
+   {
+    "step": 62,
+    "team": "infrastructure",
+    "summary": "gpu-3 on rack-a has PSU fault and no spare node to drain replica-3; need hardware repair or additional spare node.",
+    "hypothesis": "H1",
+    "automatic": false
+   },
+   {
+    "step": 92,
+    "team": "infrastructure",
+    "summary": "Capacity exhausted: gpu-1, gpu-2, gpu-3 on rack-a all have PSU faults and are unreachable; no spare nodes to scale onto. Only replica-4 serves all traffic, queue backlog 1090 and gateway p95 ~12s. Need rack-a power repair and/or spare GPU nodes urgently.",
+    "hypothesis": "H2",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 40,
+    "first_symptoms": [
+     "backlog:queue",
+     "down:replica-1",
+     "down:replica-2",
+     "down:replica-3",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-4",
+     "stalled:workers",
+     "unreachable:gpu-1",
+     "unreachable:gpu-2",
+     "unreachable:gpu-3",
+     "wrong_answers:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "power_failure",
+      "component": [
+       "gpu-1",
+       "gpu-2",
+       "gpu-3"
+      ],
+      "setting": null,
+      "explains": [
+       "unreachable:gpu-3",
+       "down:replica-3"
+      ],
+      "evidence": [
+       "BMC reports PSU fault on rack-a for gpu-1 and gpu-3",
+       "gpu-3 still has no telemetry and no spare node to drain to",
+       "replica-3 down because its GPU node is unreachable"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 40 drain -> partly_fixed",
+       "step 40 drain -> partly_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "workers",
+       "gateway",
+       "replica-1",
+       "replica-2",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "3 of 4 replicas down, only replica-4 handles all traffic",
+       "queue backlog 1090, workers slow",
+       "gateway p95 11913ms",
+       "traffic 1.09x normal but capacity halved",
+       "all live replicas slow",
+       "scale_out failed: no spare GPU node"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_release",
+      "component": [
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4"
+      ],
+      "setting": "tokenizer",
+      "explains": [
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-4"
+      ],
+      "evidence": [
+       "tokenizer rollback on replica-1 and replica-4 cleared mojibake wrong answers at step 90"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 50 rollback -> not_fixed",
+       "step 62 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "index_corruption",
+      "component": [
+       "vectordb"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-2"
+      ],
+      "evidence": [
+       "index rebuild complete, segment checksums verified at step 81",
+       "replica-2 retrieval wrong answers cleared at step 90"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 62 rebuild_index -> fixed"
+      ],
+      "status": "fixed"
+     }
+    },
+    "actions": [
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "PSU fault on rack-a; drain all three rack-a nodes to move replicas to spare nodes",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-1",
+        "gpu-2",
+        "gpu-3"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "down:replica-1",
+        "down:replica-2",
+        "unreachable:gpu-1",
+        "unreachable:gpu-2"
+       ],
+       "still_open": [
+        "down:replica-3",
+        "unreachable:gpu-3"
+       ]
+      }
+     },
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-2"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Same rack-a PSU issue",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-1",
+        "gpu-2",
+        "gpu-3"
+       ]
+      },
+      "result": "replica-2 moving gpu-2 -> gpu-6; gpu-2 drained",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "down:replica-1",
+        "down:replica-2",
+        "unreachable:gpu-1",
+        "unreachable:gpu-2"
+       ],
+       "still_open": [
+        "down:replica-3",
+        "unreachable:gpu-3"
+       ]
+      }
+     },
+     {
+      "step": 40,
+      "action": "drain",
+      "args": {
+       "node": "gpu-3"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Same rack-a PSU issue",
+      "ran": false,
+      "risk": "none",
+      "result": "blocked: no spare node to move the replica to"
+     },
+     {
+      "step": 50,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-1",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Revert beta tokenizer on the two live replicas showing mojibake/wrong answers",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "tokenizer",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-1', 'replica-4']",
+      "verified": {
+       "step": 58,
+       "cleared": [],
+       "still_open": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-2",
+        "wrong_answers:replica-4"
+       ]
+      },
+      "undone": "set tokenizer on ['replica-1', 'replica-4']"
+     },
+     {
+      "step": 62,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-1",
+        "replica-4"
+       ]
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Rollback tokenizer on replica-1 and replica-4 to tok-2.1 to fix mojibake and wrong answers; previous rollback may not have taken effect or was undone.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_release",
+       "setting": "tokenizer",
+       "component": [
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "rolled back tokenizer on ['replica-1', 'replica-4']",
+      "verified": {
+       "step": 90,
+       "cleared": [
+        "wrong_answers:replica-1",
+        "wrong_answers:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 62,
+      "action": "rebuild_index",
+      "args": {},
+      "hypothesis": "H4",
+      "purpose": "fix",
+      "why": "Rebuild vector index to fix checksum mismatch and retrieval errors on replica-2.",
+      "ran": true,
+      "risk": "high",
+      "approved": true,
+      "cause": {
+       "type": "index_corruption",
+       "setting": null,
+       "component": [
+        "vectordb"
+       ]
+      },
+      "result": "rebuilding primary index (about 200s)",
+      "verified": {
+       "step": 90,
+       "cleared": [
+        "wrong_answers:replica-2"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 62,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "gpu-3 on rack-a has PSU fault and no spare node to drain replica-3; need hardware repair or additional spare node."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "Cannot fix power failure without hardware intervention; escalate to infrastructure team.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "power_failure",
+       "setting": null,
+       "component": [
+        "gpu-1",
+        "gpu-2",
+        "gpu-3"
+       ]
+      },
+      "result": "handed to infrastructure"
+     },
+     {
+      "step": 90,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Add capacity to handle overload caused by lost replicas; no spare nodes currently, but scale_out may use spare nodes if available; if not, this will fail and we need to escalate.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "gateway",
+        "replica-4"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 92,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "Capacity exhausted: gpu-1, gpu-2, gpu-3 on rack-a all have PSU faults and are unreachable; no spare nodes to scale onto. Only replica-4 serves all traffic, queue backlog 1090 and gateway p95 ~12s. Need rack-a power repair and/or spare GPU nodes urgently."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "scale_out failed for lack of spare nodes; overload can only be relieved by restoring capacity, which needs hands",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "workers",
+        "gateway",
+        "replica-1",
+        "replica-2",
+        "replica-4"
+       ]
+      },
+      "result": "handed to infrastructure"
+     }
+    ],
+    "turns": [
+     {
+      "step": 40,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-1",
+       "down:replica-2",
+       "down:replica-3",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-4",
+       "stalled:workers",
+       "unreachable:gpu-1",
+       "unreachable:gpu-2",
+       "unreachable:gpu-3",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-1",
+          "gpu-2",
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-1",
+          "unreachable:gpu-2",
+          "unreachable:gpu-3",
+          "down:replica-1",
+          "down:replica-2",
+          "down:replica-3"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-a for gpu-1 and gpu-3",
+          "gpu-2 also on rack-a and unreachable",
+          "replicas 1-3 lost connection to their GPUs"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "gateway",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-4",
+          "stalled:workers"
+         ],
+         "evidence": [
+          "3 of 4 replicas down, only replica-4 handles all traffic",
+          "queue backlog 1587, workers dispatching only 45 req/s",
+          "gateway timeouts and high latency",
+          "replica-4 slow and giving wrong answers"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "replica-4 fails Arabic and English retrieval canaries",
+          "replica-4 uses same settings as down replicas, but is the only one still up",
+          "wrong answers suggest a model or template issue"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "PSU fault on rack-a; drain all three rack-a nodes to move replicas to spare nodes"
+        },
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-2"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Same rack-a PSU issue"
+        },
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-3"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Same rack-a PSU issue"
+        }
+       ],
+       "summary": "Rack-a PSU fault took down gpu-1/2/3 and replicas 1-3; overload on remaining replica-4 causes queue backlog, timeouts, and wrong answers; draining rack-a nodes to spare rack-b nodes."
+      }
+     },
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-3",
+       "long_answers:replica-1",
+       "long_answers:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "unreachable:gpu-3",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-1",
+          "gpu-2",
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-1",
+          "unreachable:gpu-2",
+          "unreachable:gpu-3",
+          "down:replica-1",
+          "down:replica-2",
+          "down:replica-3"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-a for gpu-1 and gpu-3",
+          "gpu-2 also on rack-a and unreachable",
+          "replicas 1-3 lost connection to their GPUs",
+          "gpu-3 still has no telemetry and no spare node to drain to"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "gateway",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "long_answers:replica-1",
+          "long_answers:replica-4"
+         ],
+         "evidence": [
+          "3 of 4 replicas down, only replica-4 handles all traffic",
+          "queue backlog 3334, workers slow",
+          "gateway p95 29110ms",
+          "traffic 1.06x normal but capacity halved",
+          "all live replicas slow and generating long answers"
+         ],
+         "status": "suspected",
+         "confidence": 0.75
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-2",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "step 41 tokenizer tok-2.1 -> tok-2.2-beta on replica-1, replica-3, replica-4",
+          "replica-1 and replica-4 show mojibake (byte-mangled) Arabic output",
+          "replica-2 (tok-2.1) shows retrieval wrong answers but not mojibake",
+          "wrong answers start after the tokenizer change"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-2"
+         ],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch, serving cached segment",
+          "replica-2 retrieval canaries wrong (Arabic and English retrieval 9/9)"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-1",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Revert beta tokenizer on the two live replicas showing mojibake/wrong answers"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-2",
+          "contains": "retrieval"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Distinguish tokenizer vs vectordb cause on replica-2"
+        }
+       ],
+       "summary": "Revert the bad tokenizer on live replicas 1 and 4 while gpu-3 power fault persists, and probe replica-2's retrieval source."
+      }
+     },
+     {
+      "step": 62,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-3",
+       "long_answers:replica-1",
+       "long_answers:replica-4",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "unreachable:gpu-3",
+       "wrong_answers:replica-1",
+       "wrong_answers:replica-2",
+       "wrong_answers:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-1",
+          "gpu-2",
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-3",
+          "down:replica-3"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-a for gpu-1 and gpu-3",
+          "gpu-3 still has no telemetry and no spare node to drain to",
+          "replica-3 down because its GPU node is unreachable"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "gateway",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4",
+          "long_answers:replica-1",
+          "long_answers:replica-4"
+         ],
+         "evidence": [
+          "3 of 4 replicas down, only replica-4 handles all traffic",
+          "queue backlog 2348, workers slow",
+          "gateway p95 21098ms",
+          "traffic 1.04x normal but capacity halved",
+          "all live replicas slow and generating long answers"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [
+          "wrong_answers:replica-1",
+          "wrong_answers:replica-4"
+         ],
+         "evidence": [
+          "step 41 tokenizer tok-2.1 -> tok-2.2-beta on replica-1, replica-3, replica-4",
+          "replica-1 and replica-4 show mojibake (byte-mangled) Arabic output",
+          "replica-2 (tok-2.1) shows retrieval wrong answers but not mojibake",
+          "wrong answers start after the tokenizer change",
+          "rollback on replica-1 and replica-4 did not clear symptoms (still tok-2.2-beta?)"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-2"
+         ],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch, serving cached segment",
+          "replica-2 retrieval canaries wrong (Arabic and English retrieval 5/6)"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "tokenizer",
+          "replicas": [
+           "replica-1",
+           "replica-4"
+          ]
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Rollback tokenizer on replica-1 and replica-4 to tok-2.1 to fix mojibake and wrong answers; previous rollback may not have taken effect or was undone."
+        },
+        {
+         "action": "rebuild_index",
+         "args": {},
+         "hypothesis": "H4",
+         "purpose": "fix",
+         "why": "Rebuild vector index to fix checksum mismatch and retrieval errors on replica-2."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "gpu-3 on rack-a has PSU fault and no spare node to drain replica-3; need hardware repair or additional spare node."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "Cannot fix power failure without hardware intervention; escalate to infrastructure team."
+        }
+       ],
+       "summary": "Roll back tokenizer on replica-1 and replica-4 to fix mojibake, rebuild vector index to fix retrieval errors, and escalate gpu-3 power failure to infrastructure."
+      }
+     },
+     {
+      "step": 90,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-3",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "unreachable:gpu-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-1",
+          "gpu-2",
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-3",
+          "down:replica-3"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-a for gpu-1 and gpu-3",
+          "gpu-3 still has no telemetry and no spare node to drain to",
+          "replica-3 down because its GPU node is unreachable"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "gateway",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "3 of 4 replicas down, only replica-4 handles all traffic",
+          "queue backlog 1144, workers slow",
+          "gateway p95 12541ms",
+          "traffic 1.06x normal but capacity halved",
+          "all live replicas slow"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "step 41 tokenizer tok-2.1 -> tok-2.2-beta on replica-1, replica-3, replica-4",
+          "replica-1 and replica-4 show mojibake (byte-mangled) Arabic output",
+          "replica-2 (tok-2.1) shows retrieval wrong answers but not mojibake",
+          "wrong answers start after the tokenizer change",
+          "rollback on replica-1 and replica-4 did not clear symptoms (still tok-2.2-beta?)"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "vectordb segment 7 checksum mismatch, serving cached segment",
+          "replica-2 retrieval canaries wrong (Arabic and English retrieval 5/6)"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Add capacity to handle overload caused by lost replicas; no spare nodes currently, but scale_out may use spare nodes if available; if not, this will fail and we need to escalate."
+        }
+       ],
+       "summary": "Overload persists due to lost capacity from power failure; scaling out to add replicas."
+      }
+     },
+     {
+      "step": 92,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "backlog:queue",
+       "down:replica-3",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-4",
+       "unreachable:gpu-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "power_failure",
+         "component": [
+          "gpu-1",
+          "gpu-2",
+          "gpu-3"
+         ],
+         "setting": null,
+         "explains": [
+          "unreachable:gpu-3",
+          "down:replica-3"
+         ],
+         "evidence": [
+          "BMC reports PSU fault on rack-a for gpu-1 and gpu-3",
+          "gpu-3 still has no telemetry and no spare node to drain to",
+          "replica-3 down because its GPU node is unreachable"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "workers",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "3 of 4 replicas down, only replica-4 handles all traffic",
+          "queue backlog 1090, workers slow",
+          "gateway p95 11913ms",
+          "traffic 1.09x normal but capacity halved",
+          "all live replicas slow",
+          "scale_out failed: no spare GPU node"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_release",
+         "component": [
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": "tokenizer",
+         "explains": [],
+         "evidence": [
+          "tokenizer rollback on replica-1 and replica-4 cleared mojibake wrong answers at step 90"
+         ],
+         "status": "fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "index_corruption",
+         "component": [
+          "vectordb"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "index rebuild complete, segment checksums verified at step 81",
+          "replica-2 retrieval wrong answers cleared at step 90"
+         ],
+         "status": "fixed",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "Capacity exhausted: gpu-1, gpu-2, gpu-3 on rack-a all have PSU faults and are unreachable; no spare nodes to scale onto. Only replica-4 serves all traffic, queue backlog 1090 and gateway p95 ~12s. Need rack-a power repair and/or spare GPU nodes urgently."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "scale_out failed for lack of spare nodes; overload can only be relieved by restoring capacity, which needs hands"
+        }
+       ],
+       "summary": "Tokenizer and index causes are fixed; remaining backlog and latency stem from lost rack-a capacity (PSU faults) with no spare nodes, escalated to infrastructure."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 62,
+      "team": "infrastructure",
+      "summary": "gpu-3 on rack-a has PSU fault and no spare node to drain replica-3; need hardware repair or additional spare node.",
+      "hypothesis": "H1",
+      "automatic": false
+     },
+     {
+      "step": 92,
+      "team": "infrastructure",
+      "summary": "Capacity exhausted: gpu-1, gpu-2, gpu-3 on rack-a all have PSU faults and are unreachable; no spare nodes to scale onto. Only replica-4 serves all traffic, queue backlog 1090 and gateway p95 ~12s. Need rack-a power repair and/or spare GPU nodes urgently.",
+      "hypothesis": "H2",
+      "automatic": false
+     }
+    ],
+    "changes": 5,
+    "approvals": 1,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 7 symptoms open"
+   }
+  ],
+  "cost": 0.02251065539999999,
+  "calls": 72,
+  "tokens_in": 162290,
+  "tokens_out": 41850
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "index_corruption",
+   "step": 35,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "rack_power",
+   "step": 37,
+   "target": [
+    "rack-a"
+   ],
+   "cause": "power supply fault on rack-a",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "data-centre facilities team",
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_tokenizer",
+   "step": 41,
+   "target": [
+    "replica-1",
+    "replica-3",
+    "replica-4"
+   ],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-1, replica-3, replica-4",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 41,
+   "time": "2026-10-30T09:06:50",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-1",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 50,
+   "time": "2026-10-30T09:08:20",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-1",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 62,
+   "time": "2026-10-30T09:10:20",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-1",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

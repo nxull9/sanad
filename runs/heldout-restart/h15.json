@@ -1,0 +1,301 @@
+{
+ "score": {
+  "scenario": "h15",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "memory_leak",
+    "target": [
+     "replica-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [
+     "replica-2"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 15,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": [
+   {
+    "step": 78,
+    "team": "on-call engineer",
+    "summary": "still broken",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "opened": 42,
+    "actions": [
+     {
+      "step": 42,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 42,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 42,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 42,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 42,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     },
+     {
+      "step": 54,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 54,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 54,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 54,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 54,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     },
+     {
+      "step": 66,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 66,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 66,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 66,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 66,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     }
+    ],
+    "escalations": [
+     {
+      "step": 78,
+      "team": "on-call engineer",
+      "summary": "still broken",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "rounds": 3,
+    "approvals": 0
+   }
+  ],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 37,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "memory_leak",
+   "step": 38,
+   "target": [
+    "replica-4"
+   ],
+   "cause": "server_build serve-1.8.0 deployed to replica-4",
+   "fix": "rollback:server_build",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "low_memory_limit",
+   "step": 39,
+   "target": [
+    "replica-2"
+   ],
+   "cause": "memory_limit_gb 40 deployed to replica-2",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 37,
+   "time": "2026-10-30T09:06:10",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "server_build",
+   "old": "serve-1.7.2",
+   "new": "serve-1.8.0",
+   "scope": [
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "serving runtime upgrade"
+  },
+  {
+   "step": 39,
+   "time": "2026-10-30T09:06:30",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-2"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  }
+ ]
+}

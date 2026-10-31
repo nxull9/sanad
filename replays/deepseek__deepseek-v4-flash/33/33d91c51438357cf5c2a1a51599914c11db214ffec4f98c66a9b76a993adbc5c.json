@@ -1,0 +1,288 @@
+{
+ "model": "deepseek/deepseek-v4-flash",
+ "request": {
+  "model": "deepseek/deepseek-v4-flash",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Sanad, the on-call agent for an AI serving platform that answers users in Arabic and English.\nRequests flow: gateway -> identity-service (owned by the identity team, not you) -> queue -> workers -> model replicas (one per GPU node) -> vector database.\n\nEach turn you get the open symptoms (found by monitoring code), the evidence, your ledger of hypotheses, and what your last actions did. Monitoring code, not you, decides whether a fix worked.\n\nHow to work:\n- Several causes can be active at once. Keep one hypothesis per cause. Every open symptom must appear in `explains` of a hypothesis that is not ruled_out.\n- Back each hypothesis with concrete evidence: a metric, a log line, a change log entry, a canary answer.\n- The most recent change is not always the cause. A change can only explain symptoms on what it touched, starting after it was made.\n- Canary questions are asked of each replica separately. If only replicas with a certain setting answer wrongly, suspect that setting. If every replica fails the same kind of question, suspect what they share, such as the vector database. If one replica fails while its settings match healthy ones, suspect its GPU node.\n- Restarting does not undo a bad deploy; rolling back does. Roll back only the replicas that carry the bad value.\n- Overload: when incoming traffic is well above normal and every replica is slow or the queue backs up, add capacity with scale_out. set_weight only moves load between replicas; it adds none.\n- A replica that crashed (segfault, non-zero exit) while its node shows no hardware trouble (no ECC errors, normal temperature) needs a restart. Drain a node only when the node itself shows hardware trouble.\n- A symptom that follows from a cause already in your ledger (for example, lost capacity after hardware went down) belongs in that hypothesis's explains, not in a new cause.\n- Change only what the evidence points at. Leave healthy components alone.\n- Some causes are not yours to fix: another team's service, hardware that needs hands, power. Mitigate what you safely can, then escalate with a clear summary.\n- If a fix did not clear its symptoms, revise the hypothesis rather than repeat the fix.\n\nActions (one to three per turn):\n- rollback {\"key\": setting, \"replicas\": [...]} returns a setting to its previous value. Replica settings: model_version, template, quantization, tokenizer, server_build, memory_limit_gb (give \"replicas\"). Gateway: timeout_ms, log_level. Workers: max_concurrency (no \"replicas\").\n- restart {\"target\": \"replica-N\" or \"workers\"}\n- drain {\"node\": \"gpu-N\"} moves that node's replica to a spare node and takes the node out of service.\n- set_weight {\"replica\": \"replica-N\", \"weight\": 0 to 1} sends less or no traffic to a replica. Undoable.\n- scale_out {\"count\": 1 or 2} adds replicas on spare nodes.\n- failover_vectordb {} switches to the standby vector database.\n- rebuild_index {} rebuilds the active vector index (about 200 s).\n- escalate {\"team\": \"...\", \"summary\": \"...\"} hands a cause to people.\n- inspect {\"what\": \"logs\" or \"metrics\" or \"canaries\", \"component\": \"...\", \"contains\": \"...\"} reads more and changes nothing.\n- wait {} changes nothing.\n\nReply with JSON only:\n{\"ledger\": [{\"id\": \"H1\", \"type\": TYPE, \"component\": [\"...\"], \"setting\": \"setting key or null\", \"explains\": [\"symptom keys\"], \"evidence\": [\"short facts\"], \"status\": \"suspected\" or \"ruled_out\", \"confidence\": 0.0 to 1.0}],\n \"actions\": [{\"action\": \"...\", \"args\": {}, \"hypothesis\": \"H1\", \"purpose\": \"fix\" or \"experiment\" or \"investigate\" or \"escalate\", \"why\": \"short reason\"}],\n \"summary\": \"one sentence\"}\nTYPE is one of: bad_release, bad_config, crash, deadlock, overload, gpu_overheating, gpu_silent_corruption, index_corruption, external_dependency, power_failure, unknown."
+   },
+   {
+    "role": "user",
+    "content": "STEP 138. Incident opened at step 42. Each step is 10 seconds.\n\nOPEN SYMPTOMS\n- wrong_answers:replica-1: replica-1 answers canary questions wrongly: Arabic fact 6/6, English fact 6/6, English retrieval 5/6. Example: asked \"ما هي عاصمة المملكة العربية السعودية؟\", expected \"الرياض\", got \"عاصمة المملكة العربية السعودية هي مكة المكرمة.\"\n- wrong_answers:replica-2: replica-2 answers canary questions wrongly: Arabic fact 5/6, Arabic retrieval 6/6, English fact 5/6, English retrieval 4/6. Example: asked \"ما هي عاصمة المملكة العربية السعودية؟\", expected \"الرياض\", got \"عاصمة المملكة العربية السعودية هي مكة المكرمة.\"\n- wrong_answers:replica-3: replica-3 answers canary questions wrongly: Arabic fact 6/6, Arabic retrieval 6/6, English fact 5/6, English retrieval 5/6. Example: asked \"ما هي عاصمة المملكة العربية السعودية؟\", expected \"الرياض\", got \"عاصمة المملكة العربية السعودية هي مكة المكرمة.\"\n- wrong_answers:replica-4: replica-4 answers canary questions wrongly: Arabic fact 4/6, English retrieval 4/6. Example: asked \"ما هي عاصمة المملكة العربية السعودية؟\", expected \"الرياض\", got \"عاصمة المملكة العربية السعودية هي جدة.\"\n\nYOUR LEDGER\n- H1 bad_config setting=tokenizer on ['replica-2', 'replica-3'] status=partly_fixed explains=['long_answers:replica-2', 'long_answers:replica-3'] evidence=['tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers.'] history=['step 42 rollback -> partly_fixed']\n- H2 bad_config setting=template on ['replica-1', 'replica-2', 'replica-3', 'replica-4'] status=ruled_out explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['Template rollback cleared nothing.'] history=['step 50 rollback -> not_fixed']\n- H3 bad_release setting=model_version on ['replica-1', 'replica-2', 'replica-3', 'replica-4'] status=ruled_out explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['model_version rollback to v2.3 cleared nothing at step 70.'] history=['step 62 rollback -> not_fixed']\n- H4 index_corruption setting=None on ['vectordb'] status=ruled_out explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['Rebuild and failover both cleared nothing; checksum WARN and rebuild-complete are logged.'] history=['step 74 rebuild_index -> not_fixed', 'step 102 failover_vectordb -> not_fixed']\n- H5 bad_config setting=template on ['replica-4'] status=ruled_out explains=['wrong_answers:replica-4'] evidence=['replica-4 template rollback cleared nothing.'] history=['step 114 rollback -> not_fixed']\n- H6 bad_config setting=template on ['replica-1', 'replica-2', 'replica-3'] status=ruled_out explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3'] evidence=['Template rollback cleared nothing.'] history=['step 114 rollback -> not_fixed']\n- H7 bad_release setting=server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4'] status=ruled_out explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['server_build rollback to serve-1.7.1 cleared nothing at step 134, then undone.'] history=['step 126 rollback -> not_fixed']\n- H8 gpu_silent_corruption setting=None on ['replica-1', 'replica-2', 'replica-3', 'replica-4'] status=suspected explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['All four replicas still give confident wrong facts (makkah/jeddah for Riyadh) with identical settings after every config/model/template/tokenizer/vectordb fix was tried.', 'Errors span Arabic and English, fact and retrieval, on all four nodes with no config difference left.', 'No restart of any replica has been attempted since symptoms began.']\n- H9 external_dependency setting=None on ['identity-service'] status=suspected explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['identity-service is external and owned by another team; not instrumented in logs.', 'Wrong confident answers on all replicas across languages could come from upstream prompt/context corruption.']\n- H10 bad_config setting=quantization on ['replica-1', 'replica-2', 'replica-3', 'replica-4'] status=suspected explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['quantization=fp8 identical on all replicas; not in change log, but fp8 is the only remaining shared setting never tested.']\n\nYOUR RECENT ACTIONS\n- step 126 rollback {\"key\": \"server_build\", \"replicas\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"]} for H7: rolled back server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4']; checked at step 134: cleared nothing, still open ['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4']; undone because it cleared nothing (set server_build on ['replica-1', 'replica-2', 'replica-3', 'replica-4'])\n\nWHAT YOU INSPECTED\nmetrics replica-1 (last 8 steps):\n  replica-1.up: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]\n  replica-1.rps: [33.887, 32.336, 33.179, 35.098, 35.18, 34.474, 32.095, 34.927]\n  replica-1.latency_p95_ms: [3604.377, 3849.694, 3478.83, 3607.17, 3612.279, 3601.857, 3773.86, 3631.052]\n  replica-1.memory_pct: [54.888, 54.608, 55.997, 55.615, 55.226, 53.957, 55.526, 54.805]\n  replica-1.restarts: [0, 0, 0, 0, 0, 0, 0, 0]\n  replica-1.output_tokens_avg: [176.102, 181.602, 173.67, 165.91, 188.962, 161.888, 166.584, 192.777]\nlogs identity-service error:\n  (none)\n\nPLATFORM\npath: gateway -> identity-service (external, owned by identity team) -> queue -> workers -> replicas -> vectordb\nreplica-1: node gpu-1, up, traffic weight 1.0, model_version=allam-34b-v2.4-rc, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-2: node gpu-2, up, traffic weight 1.0, model_version=allam-34b-v2.4-rc, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-3: node gpu-3, up, traffic weight 1.0, model_version=allam-34b-v2.4-rc, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-4: node gpu-4, up, traffic weight 1.0, model_version=allam-34b-v2.4-rc, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nnodes: gpu-1 rack-a, gpu-2 rack-a, gpu-3 rack-a, gpu-4 rack-b, gpu-5 rack-b, gpu-6 rack-b; spare: gpu-5, gpu-6\ngateway: {'timeout_ms': 30000, 'log_level': 'debug'}; workers: {'max_concurrency': 64, 'count': 8}; vectordb: {'active': 'primary', 'rebuilding': False}\nincoming traffic: 135 req/s, 1.11x normal\n\nCHANGE LOG (newest last)\nstep 34 09:05:40: gateway log_level info -> debug on gateway by mfahad (OPS-140: more logging for audit)\nstep 37 09:06:10: model-server tokenizer tok-2.1 -> tok-2.2-beta on replica-2, replica-3 by ci-bot (REL-2291: tokenizer upgrade for new vocab)\nstep 42 09:07:00: model-server tokenizer tok-2.2-beta -> tok-2.1 on replica-2, replica-3 by you (Sanad) (INC: rollback)\nstep 50 09:08:20: model-server template chat-tpl-12 -> chat-tpl-11 on replica-1, replica-2, replica-3, replica-4 by you (Sanad) (INC: rollback)\nstep 53 09:08:50: model-server template chat-tpl-11 -> chat-tpl-13 on replica-4 by ci-bot (REL-2291: chat template refresh)\nstep 57 09:09:30: model-server model_version allam-34b-v2.3 -> allam-34b-v2.4-rc on replica-1, replica-2, replica-3, replica-4 by ci-bot (REL-2291: ALLaM 2.4 release candidate)\nstep 62 09:10:20: model-server model_version allam-34b-v2.4-rc -> allam-34b-v2.3 on replica-1, replica-2, replica-3, replica-4 by you (Sanad) (INC: rollback)\nstep 114 09:19:00: model-server template chat-tpl-12 -> chat-tpl-13 on replica-4 by you (Sanad) (INC: rollback)\nstep 114 09:19:00: model-server template chat-tpl-12 -> chat-tpl-11 on replica-1, replica-2, replica-3 by you (Sanad) (INC: rollback)\nstep 126 09:21:00: model-server server_build serve-1.7.2 -> serve-1.7.1 on replica-1, replica-2, replica-3, replica-4 by you (Sanad) (INC: rollback)\n\nLOG LINES NOT SEEN BEFORE THE INCIDENT (since step 36; count, first step, example)\n4x from step 68 WARN vectordb: segment 7 checksum mismatch; serving cached segment\n1x from step 93 INFO vectordb: index rebuild complete, segment checksums verified\n\nALLOWANCE LEFT: 3 turns, 2 changes. Mode: autonomous."
+   }
+  ],
+  "temperature": 0,
+  "max_tokens": 1500,
+  "response_format": {
+   "type": "json_object"
+  },
+  "reasoning": {
+   "enabled": false
+  },
+  "usage": {
+   "include": true
+  }
+ },
+ "text": "{\"ledger\": [{\"id\": \"H1\", \"type\": \"bad_config\", \"component\": [\"replica-2\", \"replica-3\"], \"setting\": \"tokenizer\", \"explains\": [\"long_answers:replica-2\", \"long_answers:replica-3\"], \"evidence\": [\"tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers.\"], \"status\": \"partly_fixed\", \"confidence\": 0.6}, {\"id\": \"H2\", \"type\": \"bad_config\", \"component\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"], \"setting\": \"template\", \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\", \"wrong_answers:replica-4\"], \"evidence\": [\"Template rollback cleared nothing.\"], \"status\": \"ruled_out\", \"confidence\": 0.9}, {\"id\": \"H3\", \"type\": \"bad_release\", \"component\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"], \"setting\": \"model_version\", \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\", \"wrong_answers:replica-4\"], \"evidence\": [\"model_version rollback to v2.3 cleared nothing at step 70.\"], \"status\": \"ruled_out\", \"confidence\": 0.9}, {\"id\": \"H4\", \"type\": \"index_corruption\", \"component\": [\"vectordb\"], \"setting\": null, \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\", \"wrong_answers:replica-4\"], \"evidence\": [\"Rebuild and failover both cleared nothing; checksum WARN and rebuild-complete are logged.\"], \"status\": \"ruled_out\", \"confidence\": 0.85}, {\"id\": \"H5\", \"type\": \"bad_config\", \"component\": [\"replica-4\"], \"setting\": \"template\", \"explains\": [\"wrong_answers:replica-4\"], \"evidence\": [\"replica-4 template rollback cleared nothing.\"], \"status\": \"ruled_out\", \"confidence\": 0.9}, {\"id\": \"H6\", \"type\": \"bad_config\", \"component\": [\"replica-1\", \"replica-2\", \"replica-3\"], \"setting\": \"template\", \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\"], \"evidence\": [\"Template rollback cleared nothing.\"], \"status\": \"ruled_out\", \"confidence\": 0.9}, {\"id\": \"H7\", \"type\": \"bad_release\", \"component\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"], \"setting\": \"server_build\", \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\", \"wrong_answers:replica-4\"], \"evidence\": [\"server_build rollback to serve-1.7.1 cleared nothing at step 134, then undone.\"], \"status\": \"ruled_out\", \"confidence\": 0.9}, {\"id\": \"H8\", \"type\": \"gpu_silent_corruption\", \"component\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"], \"setting\": null, \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\", \"wrong_answers:replica-4\"], \"evidence\": [\"All four replicas give confident wrong facts (makkah/jeddah for Riyadh) with identical settings after every config/model/template/tokenizer/vectordb fix was tried.\", \"No restart attempted since symptoms began; four independent nodes failing identically is unlikely for silent corruption but restart is the remaining safe test.\"], \"status\": \"suspected\", \"confidence\": 0.3}, {\"id\": \"H9\", \"type\": \"external_dependency\", \"component\": [\"identity-service\"], \"setting\": null, \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\", \"wrong_answers:replica-4\"], \"evidence\": [\"identity-service is external and owned by another team; not instrumented in logs.\", \"Wrong confident answers on all replicas across languages could come from upstream prompt/context corruption.\"], \"status\": \"suspected\", \"confidence\": 0.3}, {\"id\": \"H10\", \"type\": \"bad_config\", \"component\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"], \"setting\": \"quantization\", \"explains\": [\"wrong_answers:replica-1\", \"wrong_answers:replica-2\", \"wrong_answers:replica-3\", \"wrong_answers:replica-4\"], \"evidence\": [\"quantization=fp8 identical on all replicas; not in change log, but fp8 is the only remaining shared setting never tested.\"], \"status\": \"suspected\", \"confidence\": 0.35}], \"actions\": [{\"action\": \"rollback\", \"args\": {\"key\": \"quantization\", \"replicas\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"]}, \"hypothesis\": \"H10\", \"purpose\": \"experiment\", \"why\": \"Only untested shared setting; test whether fp8 quantization is producing the wrong facts.\"}, {\"action\": \"escalate\", \"args\": {\"team\": \"identity-service\", \"summary\": \"All four model replicas give confident wrong factual answers (e.g. Makkah/Jeddah for Riyadh) across Arabic and English, fact and retrieval, after every model/template/tokenizer/server_build/vectordb fix was tried. Suspect upstream prompt/context corruption in identity-service; please verify what context is being passed to the queue.\"}, \"hypothesis\": \"H9\", \"purpose\": \"escalate\", \"why\": \"External service not instrumented; needs owner to check upstream context.\"}], \"summary\": \"Testing the last untested shared setting (quantization) while escalating identity-service as a possible upstream context-corruption source.\"}",
+ "reply": {
+  "ledger": [
+   {
+    "id": "H1",
+    "type": "bad_config",
+    "component": [
+     "replica-2",
+     "replica-3"
+    ],
+    "setting": "tokenizer",
+    "explains": [
+     "long_answers:replica-2",
+     "long_answers:replica-3"
+    ],
+    "evidence": [
+     "tokenizer tok-2.2-beta was on replica-2/3; rollback cleared long_answers."
+    ],
+    "status": "partly_fixed",
+    "confidence": 0.6
+   },
+   {
+    "id": "H2",
+    "type": "bad_config",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3",
+     "replica-4"
+    ],
+    "setting": "template",
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "Template rollback cleared nothing."
+    ],
+    "status": "ruled_out",
+    "confidence": 0.9
+   },
+   {
+    "id": "H3",
+    "type": "bad_release",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3",
+     "replica-4"
+    ],
+    "setting": "model_version",
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "model_version rollback to v2.3 cleared nothing at step 70."
+    ],
+    "status": "ruled_out",
+    "confidence": 0.9
+   },
+   {
+    "id": "H4",
+    "type": "index_corruption",
+    "component": [
+     "vectordb"
+    ],
+    "setting": null,
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "Rebuild and failover both cleared nothing; checksum WARN and rebuild-complete are logged."
+    ],
+    "status": "ruled_out",
+    "confidence": 0.85
+   },
+   {
+    "id": "H5",
+    "type": "bad_config",
+    "component": [
+     "replica-4"
+    ],
+    "setting": "template",
+    "explains": [
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "replica-4 template rollback cleared nothing."
+    ],
+    "status": "ruled_out",
+    "confidence": 0.9
+   },
+   {
+    "id": "H6",
+    "type": "bad_config",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3"
+    ],
+    "setting": "template",
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3"
+    ],
+    "evidence": [
+     "Template rollback cleared nothing."
+    ],
+    "status": "ruled_out",
+    "confidence": 0.9
+   },
+   {
+    "id": "H7",
+    "type": "bad_release",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3",
+     "replica-4"
+    ],
+    "setting": "server_build",
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "server_build rollback to serve-1.7.1 cleared nothing at step 134, then undone."
+    ],
+    "status": "ruled_out",
+    "confidence": 0.9
+   },
+   {
+    "id": "H8",
+    "type": "gpu_silent_corruption",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3",
+     "replica-4"
+    ],
+    "setting": null,
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "All four replicas give confident wrong facts (makkah/jeddah for Riyadh) with identical settings after every config/model/template/tokenizer/vectordb fix was tried.",
+     "No restart attempted since symptoms began; four independent nodes failing identically is unlikely for silent corruption but restart is the remaining safe test."
+    ],
+    "status": "suspected",
+    "confidence": 0.3
+   },
+   {
+    "id": "H9",
+    "type": "external_dependency",
+    "component": [
+     "identity-service"
+    ],
+    "setting": null,
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "identity-service is external and owned by another team; not instrumented in logs.",
+     "Wrong confident answers on all replicas across languages could come from upstream prompt/context corruption."
+    ],
+    "status": "suspected",
+    "confidence": 0.3
+   },
+   {
+    "id": "H10",
+    "type": "bad_config",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3",
+     "replica-4"
+    ],
+    "setting": "quantization",
+    "explains": [
+     "wrong_answers:replica-1",
+     "wrong_answers:replica-2",
+     "wrong_answers:replica-3",
+     "wrong_answers:replica-4"
+    ],
+    "evidence": [
+     "quantization=fp8 identical on all replicas; not in change log, but fp8 is the only remaining shared setting never tested."
+    ],
+    "status": "suspected",
+    "confidence": 0.35
+   }
+  ],
+  "actions": [
+   {
+    "action": "rollback",
+    "args": {
+     "key": "quantization",
+     "replicas": [
+      "replica-1",
+      "replica-2",
+      "replica-3",
+      "replica-4"
+     ]
+    },
+    "hypothesis": "H10",
+    "purpose": "experiment",
+    "why": "Only untested shared setting; test whether fp8 quantization is producing the wrong facts."
+   },
+   {
+    "action": "escalate",
+    "args": {
+     "team": "identity-service",
+     "summary": "All four model replicas give confident wrong factual answers (e.g. Makkah/Jeddah for Riyadh) across Arabic and English, fact and retrieval, after every model/template/tokenizer/server_build/vectordb fix was tried. Suspect upstream prompt/context corruption in identity-service; please verify what context is being passed to the queue."
+    },
+    "hypothesis": "H9",
+    "purpose": "escalate",
+    "why": "External service not instrumented; needs owner to check upstream context."
+   }
+  ],
+  "summary": "Testing the last untested shared setting (quantization) while escalating identity-service as a possible upstream context-corruption source."
+ },
+ "usage": {
+  "prompt_tokens": 3874,
+  "completion_tokens": 1491,
+  "total_tokens": 5365,
+  "cost": 0.000623896,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.000623896,
+   "upstream_inference_prompt_cost": 0.000352534,
+   "upstream_inference_completions_cost": 0.000271362
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ },
+ "cost": 0.000623896
+}

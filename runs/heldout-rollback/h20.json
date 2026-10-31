@@ -1,0 +1,184 @@
+{
+ "score": {
+  "scenario": "h20",
+  "faults": 3,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "rack_power",
+    "target": [
+     "rack-a"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "bad_tokenizer",
+    "target": [
+     "replica-1",
+     "replica-3",
+     "replica-4"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": null,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 1,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": [
+   {
+    "step": 76,
+    "team": "on-call engineer",
+    "summary": "still broken",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "opened": 40,
+    "actions": [
+     {
+      "step": 52,
+      "action": "rollback",
+      "args": {
+       "key": "tokenizer",
+       "replicas": [
+        "replica-1",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "ran": true,
+      "result": "rolled back tokenizer on ['replica-1', 'replica-3', 'replica-4']"
+     }
+    ],
+    "escalations": [
+     {
+      "step": 76,
+      "team": "on-call engineer",
+      "summary": "still broken",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "rounds": 3,
+    "approvals": 0
+   }
+  ],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "index_corruption",
+   "step": 35,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  },
+  {
+   "fault": "f2",
+   "kind": "rack_power",
+   "step": 37,
+   "target": [
+    "rack-a"
+   ],
+   "cause": "power supply fault on rack-a",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "data-centre facilities team",
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "bad_tokenizer",
+   "step": 41,
+   "target": [
+    "replica-1",
+    "replica-3",
+    "replica-4"
+   ],
+   "cause": "tokenizer tok-2.2-beta deployed to replica-1, replica-3, replica-4",
+   "fix": "rollback:tokenizer",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 41,
+   "time": "2026-10-30T09:06:50",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.1",
+   "new": "tok-2.2-beta",
+   "scope": [
+    "replica-1",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "tokenizer upgrade for new vocab"
+  },
+  {
+   "step": 52,
+   "time": "2026-10-30T09:08:40",
+   "component": "model-server",
+   "key": "tokenizer",
+   "old": "tok-2.2-beta",
+   "new": "tok-2.1",
+   "scope": [
+    "replica-1",
+    "replica-3",
+    "replica-4"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

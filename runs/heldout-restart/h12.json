@@ -1,0 +1,244 @@
+{
+ "score": {
+  "scenario": "h12",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 60,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "rack_power",
+    "target": [
+     "rack-b"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": null,
+    "escalated": true
+   },
+   {
+    "fault": "index_corruption",
+    "target": [
+     "vectordb"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": null,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 15,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": [
+   {
+    "step": 76,
+    "team": "on-call engineer",
+    "summary": "still broken",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "opened": 40,
+    "actions": [
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 40,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 52,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-1"
+      },
+      "ran": true,
+      "result": "replica-1 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-2"
+      },
+      "ran": true,
+      "result": "replica-2 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-3"
+      },
+      "ran": true,
+      "result": "replica-3 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "replica-4"
+      },
+      "ran": true,
+      "result": "replica-4 restarting"
+     },
+     {
+      "step": 64,
+      "action": "restart",
+      "args": {
+       "target": "workers"
+      },
+      "ran": true,
+      "result": "worker pool restarting"
+     }
+    ],
+    "escalations": [
+     {
+      "step": 76,
+      "team": "on-call engineer",
+      "summary": "still broken",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "rounds": 3,
+    "approvals": 0
+   }
+  ],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "rack_power",
+   "step": 34,
+   "target": [
+    "rack-b"
+   ],
+   "cause": "power supply fault on rack-b",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "data-centre facilities team",
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "index_corruption",
+   "step": 42,
+   "target": [
+    "vectordb"
+   ],
+   "cause": "vectordb primary index segment corrupted",
+   "fix": "rebuild_index|failover_vectordb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": []
+}

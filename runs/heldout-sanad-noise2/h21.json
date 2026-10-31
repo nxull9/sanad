@@ -1,0 +1,560 @@
+{
+ "score": {
+  "scenario": "h21",
+  "faults": 3,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 50,
+  "recover_seconds": 190,
+  "causes": [
+   {
+    "fault": "gpu_corruption",
+    "target": [
+     "gpu-1"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "gpu_thermal",
+    "target": [
+     "gpu-4"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "identity_outage",
+    "target": [
+     "identity-service"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   }
+  ],
+  "herring_blamed": true,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 2,
+  "strong_calls": 1,
+  "cost": 0.000393,
+  "tokens_in": 166036,
+  "tokens_out": 42831,
+  "escalations": [
+   {
+    "step": 56,
+    "team": "identity team",
+    "summary": "identity-service returning connection refused / 503 to gateway since step 50, gateway error rate 62% (normal 0.07%). Needs identity team investigation.",
+    "hypothesis": "H4",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "ecc:gpu-1",
+     "wrong_answers:replica-1"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "gpu_silent_corruption",
+      "component": [
+       "replica-1"
+      ],
+      "setting": null,
+      "explains": [
+       "wrong_answers:replica-1"
+      ],
+      "evidence": [
+       "replica-1 was only replica with wrong answers",
+       "gpu-1 logged Xid 94 ECC errors",
+       "drain gpu-1 cleared wrong answers"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 42 drain -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [],
+      "evidence": [
+       "gateway log_level changed to debug might increase load or latency, but identity-service is upstream and usually doesn't cause specific wrong answers unless auth fails completely which would show timeouts/errors, not wrong text.",
+       "No symptoms point directly to identity service failure yet."
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 42 rollback -> not_fixed"
+      ],
+      "status": "not_fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "gpu_overheating",
+      "component": [
+       "gpu-4",
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "hot:gpu-4",
+       "slow:replica-4",
+       "slow:gateway"
+      ],
+      "evidence": [
+       "gpu-4 at 91C, clocks throttled to 891 MHz (thermal slowdown)",
+       "replica-4 p95 8975 ms vs fleet 3631 ms",
+       "6x WARN gpu-4 thermal throttle since step 42"
+      ],
+      "confidence": 0.85,
+      "attempts": 0,
+      "history": [
+       "step 56 drain -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "4x ERROR gateway: 503 from identity-service: connection refused since step 50",
+       "identity-service owned by identity team, not ours"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "drain",
+      "args": {
+       "node": "gpu-1"
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "GPU-1 has ECC errors and its replica is producing wrong answers. Draining will move traffic to healthy replicas and isolate the faulty node.",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_silent_corruption",
+       "setting": null,
+       "component": [
+        "replica-1"
+       ]
+      },
+      "result": "replica-1 moving gpu-1 -> gpu-5; gpu-1 drained",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "wrong_answers:replica-1"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "log_level",
+       "replicas": [
+        "gateway"
+       ]
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Revert the recent change to gateway logging to reduce potential overhead, although it's likely not the root cause of the GPU corruption.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "gateway log_level debug -> info",
+      "verified": {
+       "step": 52,
+       "cleared": [],
+       "still_open": []
+      },
+      "undone": "gateway log_level = debug"
+     },
+     {
+      "step": 56,
+      "action": "drain",
+      "args": {
+       "node": "gpu-4"
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "gpu-4 overheating and throttling; move replica-4 to spare gpu-6",
+      "ran": true,
+      "risk": "medium",
+      "cause": {
+       "type": "gpu_overheating",
+       "setting": null,
+       "component": [
+        "gpu-4",
+        "replica-4"
+       ]
+      },
+      "result": "replica-4 moving gpu-4 -> gpu-6; gpu-4 drained",
+      "verified": {
+       "step": 66,
+       "cleared": [
+        "hot:gpu-4",
+        "slow:gateway",
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 56,
+      "action": "escalate",
+      "args": {
+       "team": "identity team",
+       "summary": "identity-service returning connection refused / 503 to gateway since step 50, gateway error rate 62% (normal 0.07%). Needs identity team investigation."
+      },
+      "hypothesis": "H4",
+      "purpose": "escalate",
+      "why": "identity-service is external and returning 503 connection refused",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity team"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": false,
+      "symptoms": [
+       "ecc:gpu-1",
+       "wrong_answers:replica-1"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 is the only replica with wrong answers",
+          "gpu-1 has logged ECC errors (Xid 94)",
+          "other replicas on different nodes are healthy"
+         ],
+         "status": "suspected",
+         "confidence": 0.85
+        },
+        {
+         "id": "H2",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "gateway log_level changed to debug might increase load or latency, but identity-service is upstream and usually doesn't cause specific wrong answers unless auth fails completely which would show timeouts/errors, not wrong text.",
+          "No symptoms point directly to identity service failure yet."
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-1"
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "GPU-1 has ECC errors and its replica is producing wrong answers. Draining will move traffic to healthy replicas and isolate the faulty node."
+        },
+        {
+         "action": "rollback",
+         "args": {
+          "key": "log_level",
+          "replicas": [
+           "gateway"
+          ]
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Revert the recent change to gateway logging to reduce potential overhead, although it's likely not the root cause of the GPU corruption."
+        }
+       ],
+       "summary": "Isolating faulty GPU-1 via drain due to ECC errors and associated wrong answers from replica-1, while reverting unnecessary gateway logging changes."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": false,
+      "symptoms": [
+       "errors:gateway",
+       "hot:gpu-4",
+       "slow:gateway",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "gpu_silent_corruption",
+         "component": [
+          "replica-1"
+         ],
+         "setting": null,
+         "explains": [
+          "wrong_answers:replica-1"
+         ],
+         "evidence": [
+          "replica-1 was only replica with wrong answers",
+          "gpu-1 logged Xid 94 ECC errors",
+          "drain gpu-1 cleared wrong answers"
+         ],
+         "status": "fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "gpu_overheating",
+         "component": [
+          "gpu-4",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "hot:gpu-4",
+          "slow:replica-4",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "gpu-4 at 91C, clocks throttled to 891 MHz (thermal slowdown)",
+          "replica-4 p95 8975 ms vs fleet 3631 ms",
+          "6x WARN gpu-4 thermal throttle since step 42"
+         ],
+         "status": "suspected",
+         "confidence": 0.85
+        },
+        {
+         "id": "H4",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "4x ERROR gateway: 503 from identity-service: connection refused since step 50",
+          "identity-service owned by identity team, not ours"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "drain",
+         "args": {
+          "node": "gpu-4"
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "gpu-4 overheating and throttling; move replica-4 to spare gpu-6"
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity team",
+          "summary": "identity-service returning connection refused / 503 to gateway since step 50, gateway error rate 62% (normal 0.07%). Needs identity team investigation."
+         },
+         "hypothesis": "H4",
+         "purpose": "escalate",
+         "why": "identity-service is external and returning 503 connection refused"
+        }
+       ],
+       "summary": "Drain overheating gpu-4 to shed thermal throttling, and escalate identity-service 503s to its owner team."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 56,
+      "team": "identity team",
+      "summary": "identity-service returning connection refused / 503 to gateway since step 50, gateway error rate 62% (normal 0.07%). Needs identity team investigation.",
+      "hypothesis": "H4",
+      "automatic": false
+     }
+    ],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 1 symptoms open"
+   }
+  ],
+  "cost": 0.022904008399999988,
+  "calls": 74,
+  "tokens_in": 166036,
+  "tokens_out": 42831
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 36,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "gpu_corruption",
+   "step": 37,
+   "target": [
+    "gpu-1"
+   ],
+   "cause": "gpu-1 silent data corruption",
+   "fix": "drain:gpu-1",
+   "fixable": true,
+   "needs_human": "pull the GPU for vendor diagnostics (RMA)",
+   "silent": true
+  },
+  {
+   "fault": "f3",
+   "kind": "gpu_thermal",
+   "step": 42,
+   "target": [
+    "gpu-4"
+   ],
+   "cause": "gpu-4 fan failure: thermal throttling",
+   "fix": "drain:gpu-4",
+   "fixable": true,
+   "needs_human": "replace the fan on the node",
+   "silent": false
+  },
+  {
+   "fault": "f4",
+   "kind": "identity_outage",
+   "step": 49,
+   "target": [
+    "identity-service"
+   ],
+   "cause": "identity-service (owned by the identity team) is down",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "page the identity team",
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 36,
+   "time": "2026-10-30T09:06:00",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "debug",
+   "new": "info",
+   "scope": [
+    "gateway"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  },
+  {
+   "step": 52,
+   "time": "2026-10-30T09:08:40",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "undo"
+  }
+ ]
+}

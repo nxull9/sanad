@@ -1,0 +1,133 @@
+{
+ "model": "deepseek/deepseek-v4-flash",
+ "request": {
+  "model": "deepseek/deepseek-v4-flash",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Sanad, the on-call agent for an AI serving platform that answers users in Arabic and English.\nRequests flow: gateway -> identity-service (owned by the identity team, not you) -> queue -> workers -> model replicas (one per GPU node) -> vector database.\n\nEach turn you get the open symptoms (found by monitoring code), the evidence, your ledger of hypotheses, and what your last actions did. Monitoring code, not you, decides whether a fix worked.\n\nHow to work:\n- Several causes can be active at once. Keep one hypothesis per cause. Every open symptom must appear in `explains` of a hypothesis that is not ruled_out.\n- Back each hypothesis with concrete evidence: a metric, a log line, a change log entry, a canary answer.\n- The most recent change is not always the cause. A change can only explain symptoms on what it touched, starting after it was made.\n- Canary questions are asked of each replica separately. If only replicas with a certain setting answer wrongly, suspect that setting. If every replica fails the same kind of question, suspect what they share, such as the vector database. If one replica fails while its settings match healthy ones, suspect its GPU node.\n- Restarting does not undo a bad deploy; rolling back does. Roll back only the replicas that carry the bad value.\n- Overload: when incoming traffic is well above normal and every replica is slow or the queue backs up, add capacity with scale_out. set_weight only moves load between replicas; it adds none.\n- A replica that crashed (segfault, non-zero exit) while its node shows no hardware trouble (no ECC errors, normal temperature) needs a restart. Drain a node only when the node itself shows hardware trouble.\n- A symptom that follows from a cause already in your ledger (for example, lost capacity after hardware went down) belongs in that hypothesis's explains, not in a new cause.\n- Change only what the evidence points at. Leave healthy components alone.\n- Some causes are not yours to fix: another team's service, hardware that needs hands, power. Mitigate what you safely can, then escalate with a clear summary.\n- If a fix did not clear its symptoms, revise the hypothesis rather than repeat the fix.\n\nActions (one to three per turn):\n- rollback {\"key\": setting, \"replicas\": [...]} returns a setting to its previous value. Replica settings: model_version, template, quantization, tokenizer, server_build, memory_limit_gb (give \"replicas\"). Gateway: timeout_ms, log_level. Workers: max_concurrency (no \"replicas\").\n- restart {\"target\": \"replica-N\" or \"workers\"}\n- drain {\"node\": \"gpu-N\"} moves that node's replica to a spare node and takes the node out of service.\n- set_weight {\"replica\": \"replica-N\", \"weight\": 0 to 1} sends less or no traffic to a replica. Undoable.\n- scale_out {\"count\": 1 or 2} adds replicas on spare nodes.\n- failover_vectordb {} switches to the standby vector database.\n- rebuild_index {} rebuilds the active vector index (about 200 s).\n- escalate {\"team\": \"...\", \"summary\": \"...\"} hands a cause to people.\n- inspect {\"what\": \"logs\" or \"metrics\" or \"canaries\", \"component\": \"...\", \"contains\": \"...\"} reads more and changes nothing.\n- wait {} changes nothing.\n\nReply with JSON only:\n{\"ledger\": [{\"id\": \"H1\", \"type\": TYPE, \"component\": [\"...\"], \"setting\": \"setting key or null\", \"explains\": [\"symptom keys\"], \"evidence\": [\"short facts\"], \"status\": \"suspected\" or \"ruled_out\", \"confidence\": 0.0 to 1.0}],\n \"actions\": [{\"action\": \"...\", \"args\": {}, \"hypothesis\": \"H1\", \"purpose\": \"fix\" or \"experiment\" or \"investigate\" or \"escalate\", \"why\": \"short reason\"}],\n \"summary\": \"one sentence\"}\nTYPE is one of: bad_release, bad_config, crash, deadlock, overload, gpu_overheating, gpu_silent_corruption, index_corruption, external_dependency, power_failure, unknown."
+   },
+   {
+    "role": "user",
+    "content": "STEP 52. Incident opened at step 44. Each step is 10 seconds.\n\nOPEN SYMPTOMS\n- errors:gateway: error rate 23.6% (normal 0.07%)\n- (UNEXPLAINED) restarting:replica-1: replica-1 restarted 1 times in the last 6 steps\n- (UNEXPLAINED) restarting:replica-2: replica-2 restarted 1 times in the last 6 steps\n- (UNEXPLAINED) restarting:replica-3: replica-3 restarted 1 times in the last 6 steps\n- (UNEXPLAINED) restarting:replica-4: replica-4 restarted 1 times in the last 6 steps\n- (UNEXPLAINED) slow:gateway: p95 latency 12532 ms (normal 3599 ms)\n\nYOUR LEDGER\n- H1 bad_config setting=timeout_ms on ['gateway'] status=partly_fixed explains=['errors:gateway', 'wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['step 40 change: timeout_ms 30000 -> 800', 'log lines: upstream timeout after 800ms', 'incoming traffic 1.03x normal suggests latency sensitivity', \"all replicas fail canary with similar wrong answers likely due to truncated responses or fallback behavior when timeouts occur, or the 'wrong' answers are actually cached/stale data served because the model didn't finish generating within the tight window, or the gateway is returning partial/error responses that look like wrong answers in the canary check. However, looking closer: the wrong answers are specific text. If the gateway times out, it usually returns an error. But here we see specific wrong answers. Let's re-evaluate. The symptoms are ALL replicas answering wrongly. This points to a shared component or a systemic issue. The vector DB has a checksum mismatch (WARN). If the vector DB serves bad context, all models might generate bad answers. Or, if the gateway timeout causes the request to be retried or handled differently? No, the logs show 'upstream timeout'. If the gateway times out, the client gets an error. Why are there 'wrong_answers'? Perhaps the canary system is checking the *content* of the response, and if the response is truncated or an error message, it counts as wrong? Or maybe the 'wrong' answers are coming from a fallback mechanism? Wait, the prompt says 'replica-X answers canary questions wrongly'. This implies the replica returned a text answer. If the gateway timed out, the replica might have finished, but the gateway killed the connection? No, the log is 'upstream timeout', meaning the gateway waited for the replica and gave up. So the replica should have sent the full response. Unless... the 'wrong' answers are actually correct based on *bad context* from the Vector DB. The Vector DB log shows 'checksum mismatch; serving cached segment'. This suggests data corruption or inconsistency. If the context retrieved is wrong, the LLM generates a wrong answer. This explains why ALL replicas give wrong answers (they share the same Vector DB). The gateway timeout errors are a separate symptom caused by the tightened timeout (800ms) combined with the extra latency of processing potentially larger/bad context or just general load. The timeout fix is easy. The Vector DB issue is the root cause of the wrong answers. I need to address both. H1 covers the timeout causing gateway errors. H2 will cover the Vector DB causing wrong answers.\"] history=['step 44 rollback -> partly_fixed']\n- H2 index_corruption setting=None on ['vectordb'] status=fixed explains=['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'] evidence=['WARN vectordb: segment 7 checksum mismatch; serving cached segment', 'All replicas return incorrect factual answers for the same query, suggesting shared bad context retrieval'] history=['step 44 failover_vectordb -> fixed']\n\nYOUR RECENT ACTIONS\n- step 44 rollback {\"key\": \"timeout_ms\", \"replicas\": []} for H1: gateway timeout_ms 800 -> 30000; checked at step 52: cleared ['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'], still open ['errors:gateway']\n- step 44 failover_vectordb {} for H2: vectordb primary -> standby; checked at step 52: cleared ['wrong_answers:replica-1', 'wrong_answers:replica-2', 'wrong_answers:replica-3', 'wrong_answers:replica-4'], still open nothing\n\nPLATFORM\npath: gateway -> identity-service (external, owned by identity team) -> queue -> workers -> replicas -> vectordb\nreplica-1: node gpu-1, DOWN, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-13*, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=40\nreplica-2: node gpu-2, DOWN, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-13*, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=40\nreplica-3: node gpu-3, DOWN, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12*, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=40\nreplica-4: node gpu-4, DOWN, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12*, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=40\n(* = replicas differ on this setting)\nnodes: gpu-1 rack-a, gpu-2 rack-a, gpu-3 rack-a, gpu-4 rack-b, gpu-5 rack-b, gpu-6 rack-b; spare: gpu-5, gpu-6\ngateway: {'timeout_ms': 30000, 'log_level': 'debug'}; workers: {'max_concurrency': 64, 'count': 8}; vectordb: {'active': 'standby', 'rebuilding': False}\nincoming traffic: 125 req/s, 1.03x normal\n\nCHANGE LOG (newest last)\nstep 35 09:05:50: gateway log_level info -> debug on gateway by mfahad (OPS-140: more logging for audit)\nstep 40 09:06:40: gateway timeout_ms 30000 -> 800 on gateway by jsmith (OPS-118: tighten timeout to protect upstream)\nstep 44 09:07:20: gateway timeout_ms 800 -> 30000 on gateway by you (Sanad) (INC: rollback)\nstep 46 09:07:40: model-server template chat-tpl-12 -> chat-tpl-13 on replica-1, replica-2 by ci-bot (REL-2291: chat template refresh)\nstep 51 09:08:30: model-server memory_limit_gb 80 -> 40 on replica-1, replica-2, replica-3, replica-4 by ci-bot (REL-2291: right-size container memory)\n\nLOG LINES NOT SEEN BEFORE THE INCIDENT (since step 38; count, first step, example)\n1x from step 38 WARN vectordb: segment 7 checksum mismatch; serving cached segment\n5x from step 40 ERROR gateway: upstream timeout after 800ms\n1x from step 51 ERROR replica-1: OOMKilled while loading weights: limit 40GB, need 68GB\n1x from step 51 ERROR replica-2: OOMKilled while loading weights: limit 40GB, need 68GB\n1x from step 51 ERROR replica-3: OOMKilled while loading weights: limit 40GB, need 68GB\n1x from step 51 ERROR replica-4: OOMKilled while loading weights: limit 40GB, need 68GB\n1x from step 51 WARN queue: backlog 1275 requests, oldest waiting 60s\n\nALLOWANCE LEFT: 11 turns, 8 changes. Mode: autonomous."
+   }
+  ],
+  "temperature": 0,
+  "max_tokens": 1500,
+  "response_format": {
+   "type": "json_object"
+  },
+  "reasoning": {
+   "enabled": false
+  },
+  "usage": {
+   "include": true
+  }
+ },
+ "text": "{\n  \"ledger\": [\n    {\n      \"id\": \"H1\",\n      \"type\": \"bad_config\",\n      \"component\": [\"gateway\"],\n      \"setting\": \"timeout_ms\",\n      \"explains\": [\"errors:gateway\"],\n      \"evidence\": [\n        \"step 40 change: timeout_ms 30000 -> 800\",\n        \"log lines: upstream timeout after 800ms\",\n        \"incoming traffic 1.03x normal suggests latency sensitivity\"\n      ],\n      \"status\": \"suspected\",\n      \"confidence\": 0.9\n    },\n    {\n      \"id\": \"H2\",\n      \"type\": \"index_corruption\",\n      \"component\": [\"vectordb\"],\n      \"setting\": null,\n      \"explains\": [],\n      \"evidence\": [\n        \"WARN vectordb: segment 7 checksum mismatch; serving cached segment\",\n        \"All replicas return incorrect factual answers for the same query, suggesting shared bad context retrieval\"\n      ],\n      \"status\": \"fixed\",\n      \"confidence\": 1.0\n    },\n    {\n      \"id\": \"H3\",\n      \"type\": \"bad_config\",\n      \"component\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"],\n      \"setting\": \"memory_limit_gb\",\n      \"explains\": [\"restarting:replica-1\", \"restarting:replica-2\", \"restarting:replica-3\", \"restarting:replica-4\", \"slow:gateway\"],\n      \"evidence\": [\n        \"step 51 change: memory_limit_gb 80 -> 40 on all replicas\",\n        \"log lines: OOMKilled while loading weights: limit 40GB, need 68GB\",\n        \"queue backlog 1275 requests, oldest waiting 60s\",\n        \"all replicas down, causing gateway timeouts and queue buildup\"\n      ],\n      \"status\": \"suspected\",\n      \"confidence\": 1.0\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"rollback\",\n      \"args\": {\n        \"key\": \"memory_limit_gb\",\n        \"replicas\": [\"replica-1\", \"replica-2\", \"replica-3\", \"replica-4\"]\n      },\n      \"hypothesis\": \"H3\",\n      \"purpose\": \"fix\",\n      \"why\": \"memory_limit_gb was reduced from 80 to 40, causing all replicas to OOM on startup; rollback to 80 to restore capacity\"\n    }\n  ],\n  \"summary\": \"Rolling back memory_limit_gb from 40 to 80 on all replicas to resolve OOM crashes and restore service capacity.\"\n}",
+ "reply": {
+  "ledger": [
+   {
+    "id": "H1",
+    "type": "bad_config",
+    "component": [
+     "gateway"
+    ],
+    "setting": "timeout_ms",
+    "explains": [
+     "errors:gateway"
+    ],
+    "evidence": [
+     "step 40 change: timeout_ms 30000 -> 800",
+     "log lines: upstream timeout after 800ms",
+     "incoming traffic 1.03x normal suggests latency sensitivity"
+    ],
+    "status": "suspected",
+    "confidence": 0.9
+   },
+   {
+    "id": "H2",
+    "type": "index_corruption",
+    "component": [
+     "vectordb"
+    ],
+    "setting": null,
+    "explains": [],
+    "evidence": [
+     "WARN vectordb: segment 7 checksum mismatch; serving cached segment",
+     "All replicas return incorrect factual answers for the same query, suggesting shared bad context retrieval"
+    ],
+    "status": "fixed",
+    "confidence": 1.0
+   },
+   {
+    "id": "H3",
+    "type": "bad_config",
+    "component": [
+     "replica-1",
+     "replica-2",
+     "replica-3",
+     "replica-4"
+    ],
+    "setting": "memory_limit_gb",
+    "explains": [
+     "restarting:replica-1",
+     "restarting:replica-2",
+     "restarting:replica-3",
+     "restarting:replica-4",
+     "slow:gateway"
+    ],
+    "evidence": [
+     "step 51 change: memory_limit_gb 80 -> 40 on all replicas",
+     "log lines: OOMKilled while loading weights: limit 40GB, need 68GB",
+     "queue backlog 1275 requests, oldest waiting 60s",
+     "all replicas down, causing gateway timeouts and queue buildup"
+    ],
+    "status": "suspected",
+    "confidence": 1.0
+   }
+  ],
+  "actions": [
+   {
+    "action": "rollback",
+    "args": {
+     "key": "memory_limit_gb",
+     "replicas": [
+      "replica-1",
+      "replica-2",
+      "replica-3",
+      "replica-4"
+     ]
+    },
+    "hypothesis": "H3",
+    "purpose": "fix",
+    "why": "memory_limit_gb was reduced from 80 to 40, causing all replicas to OOM on startup; rollback to 80 to restore capacity"
+   }
+  ],
+  "summary": "Rolling back memory_limit_gb from 40 to 80 on all replicas to resolve OOM crashes and restore service capacity."
+ },
+ "usage": {
+  "prompt_tokens": 2898,
+  "completion_tokens": 593,
+  "total_tokens": 3491,
+  "cost": 0.00057176,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.00057176,
+   "upstream_inference_prompt_cost": 0.00040572,
+   "upstream_inference_completions_cost": 0.00016604
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ },
+ "cost": 0.00057176
+}

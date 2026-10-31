@@ -1,0 +1,1593 @@
+{
+ "score": {
+  "scenario": "h14",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": false
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 3,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 12,
+  "strong_calls": 0,
+  "cost": 0.003737,
+  "tokens_in": 82226,
+  "tokens_out": 18910,
+  "escalations": [
+   {
+    "step": 76,
+    "team": "identity",
+    "summary": "All replicas slow and queue backlog high; identity-service metrics show no data and it is the shared external dependency before the queue. Please investigate identity-service latency/errors.",
+    "hypothesis": "H4",
+    "automatic": false
+   },
+   {
+    "step": 154,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4, slow:replica-5, slow:replica-6. Ledger: H1 bad_config memory_limit_gb on ['replica-2', 'replica-3'] [ruled_out]; H2 overload  on ['queue', 'gateway', 'replica-1', 'replica-2', 'replica-3', 'replica-4', 'replica-5', 'replica-6'] [partly_fixed]; H3 bad_config  on ['replica-2', 'replica-3'] [ruled_out]; H4 external_dependency  on ['identity-service'] [escalated]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "restarting:replica-2",
+     "restarting:replica-3",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+       "replica-2 and replica-3 now up with memory_limit_gb=80",
+       "backlog and latency remain high on all replicas"
+      ],
+      "confidence": 0.0,
+      "attempts": 1,
+      "history": [
+       "step 42 rollback -> partly_fixed",
+       "step 50 scale_out -> not_fixed"
+      ],
+      "status": "ruled_out"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "queue",
+       "gateway",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "evidence": [
+       "incoming traffic 2.16x normal (263 req/s)",
+       "all replicas p95 > 20000 ms (fleet normal 3643 ms)",
+       "backlog 4964 requests waiting",
+       "scale_out added replica-5 and replica-6 but all replicas still slow",
+       "no spare nodes remain"
+      ],
+      "confidence": 0.7,
+      "attempts": 0,
+      "history": [
+       "step 64 scale_out -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+       "replica-2 and replica-3 now up with memory_limit_gb=80",
+       "backlog and latency remain high on all replicas"
+      ],
+      "confidence": 0.0,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "evidence": [
+       "identity-service is external and owned by identity team",
+       "all replicas slow and queue backlog high despite no local resource issue",
+       "vectordb latency normal (35-45 ms)",
+       "no spare nodes to scale out further"
+      ],
+      "confidence": 0.8,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "revert the memory limit from 40 to 80 on replica-2 and replica-3 so they can load the 68GB model without OOM",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-2', 'replica-3']",
+      "verified": {
+       "step": 50,
+       "cleared": [
+        "restarting:replica-2",
+        "restarting:replica-3"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 50,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Rollback restored replicas but capacity is still insufficient for 1.99x traffic; add two replicas on spare nodes to absorb backlog and reduce latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 60,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "removed ['replica-5', 'replica-6']"
+     },
+     {
+      "step": 64,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Traffic is 2.02x normal, backlog 5031, queue drops, all replicas slow. Adding 2 replicas on spare nodes (gpu-5, gpu-6) increases capacity to handle overload.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "queue",
+        "gateway",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 74,
+       "cleared": [
+        "drops:queue",
+        "errors:gateway"
+       ],
+       "still_open": [
+        "slow:replica-2",
+        "slow:replica-3"
+       ]
+      }
+     },
+     {
+      "step": 76,
+      "action": "escalate",
+      "args": {
+       "team": "identity",
+       "summary": "All replicas slow and queue backlog high; identity-service metrics show no data and it is the shared external dependency before the queue. Please investigate identity-service latency/errors."
+      },
+      "hypothesis": "H4",
+      "purpose": "escalate",
+      "why": "All replicas share identity-service; local resources and vectordb are normal, no spare capacity to scale out, so the bottleneck is likely the external identity-service.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "revert the memory limit from 40 to 80 on replica-2 and replica-3 so they can load the 68GB model without OOM"
+        }
+       ],
+       "summary": "Roll back memory_limit_gb to 80 on replica-2 and replica-3 to fix OOM crashes and the resulting overload symptoms."
+      }
+     },
+     {
+      "step": 50,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Rollback restored replicas but capacity is still insufficient for 1.99x traffic; add two replicas on spare nodes to absorb backlog and reduce latency."
+        }
+       ],
+       "summary": "Rolled back memory limit on replicas 2 and 3, but overload persists; scaling out by two replicas to add capacity."
+      }
+     },
+     {
+      "step": 64,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "drops:queue",
+          "errors:gateway",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.02x normal (247 req/s)",
+          "backlog 5031, queue full drops 1272 in last 2 steps",
+          "gateway error rate 37.6% (timeouts)",
+          "all replicas show p95 > 31000 ms (fleet normal 3643 ms)",
+          "rollback and scale_out did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-2",
+          "contains": "answer"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-2 (now with correct memory) answers correctly; if not, suspect deeper issue"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-3",
+          "contains": "answer"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-3 (now with correct memory) answers correctly; if not, suspect deeper issue"
+        }
+       ],
+       "summary": "Rollback and scale_out did not resolve overload; investigating canary answers on previously OOM'd replicas to rule out persistent corruption or config issue."
+      }
+     },
+     {
+      "step": 64,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "drops:queue",
+          "errors:gateway",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.02x normal (247 req/s)",
+          "backlog 5031, queue full drops 1272 in last 2 steps",
+          "gateway error rate 37.6% (timeouts)",
+          "all replicas show p95 > 31000 ms (fleet normal 3643 ms)",
+          "rollback and scale_out did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "right"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-1 (healthy memory) also has correct canaries; if all replicas pass, overload is the only remaining cause."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-4",
+          "contains": "right"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-4 (healthy memory) also has correct canaries; if all replicas pass, overload is the only remaining cause."
+        }
+       ],
+       "summary": "H1 (bad memory config) was rolled back but replicas-2/3 were OOM-killed and restarted; they now have correct memory but the overload persists due to 2x traffic; need to verify all replicas are healthy and then scale out to add capacity."
+      }
+     },
+     {
+      "step": 64,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "drops:queue",
+          "errors:gateway",
+          "slow:replica-2",
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.02x normal (247 req/s)",
+          "backlog 5031, queue full drops 1272 in last 2 steps",
+          "gateway error rate 37.6% (timeouts)",
+          "all replicas show p95 > 31000 ms (fleet normal 3643 ms)",
+          "rollback and scale_out did not clear symptoms"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Traffic is 2.02x normal, backlog 5031, queue drops, all replicas slow. Adding 2 replicas on spare nodes (gpu-5, gpu-6) increases capacity to handle overload."
+        }
+       ],
+       "summary": "Overload from 2x traffic persists after rollback and one scale_out; adding two more replicas to absorb load."
+      }
+     },
+     {
+      "step": 74,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.09x normal (256 req/s)",
+          "all replicas show p95 > 21000 ms (fleet normal 3643 ms)",
+          "backlog 4714 requests waiting",
+          "scale_out added replica-5 and replica-6 but all replicas still slow",
+          "no spare nodes remain"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "vectordb",
+          "contains": "latency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "All replicas are slow despite added capacity; suspect shared vectordb bottleneck."
+        }
+       ],
+       "summary": "All replicas remain slow with high traffic and no spare capacity; investigating vectordb as the shared bottleneck."
+      }
+     },
+     {
+      "step": 74,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.09x normal (256 req/s)",
+          "all replicas show p95 > 21000 ms (fleet normal 3643 ms)",
+          "backlog 4714 requests waiting",
+          "scale_out added replica-5 and replica-6 but all replicas still slow",
+          "no spare nodes remain"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-2",
+          "contains": "OOM"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Check if replica-2 is still OOMing after rollback"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-3",
+          "contains": "OOM"
+         },
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Check if replica-3 is still OOMing after rollback"
+        }
+       ],
+       "summary": "Investigating whether replica-2 and replica-3 are still OOMing after the memory_limit_gb rollback, as they remain slow and the overload persists."
+      }
+     },
+     {
+      "step": 74,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb changed from 80 to 40 on replica-2, replica-3 at step 41 (REL-2291)",
+          "replica-2 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-3 ERROR OOMKilled: limit 40GB, need 68GB",
+          "replica-2 and replica-3 down after OOMs, halving capacity",
+          "backlog at 1974, latency spike on gateway and remaining replicas due to overload"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.09x normal (256 req/s)",
+          "all replicas show p95 > 21000 ms (fleet normal 3643 ms)",
+          "backlog 4714 requests waiting",
+          "scale_out added replica-5 and replica-6 but all replicas still slow",
+          "no spare nodes remain"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "correctness"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-1 (healthy config) answers correctly; if not, the problem may be shared (vectordb or workers)."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-5",
+          "contains": "correctness"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replica-5 (newly added) answers correctly; if not, the problem may be shared (vectordb or workers)."
+        }
+       ],
+       "summary": "Investigating whether the persistent overload is caused by a shared component (vectordb or workers) by checking canary correctness on a healthy-config replica and a new replica."
+      }
+     },
+     {
+      "step": 76,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+          "replica-2 and replica-3 now up with memory_limit_gb=80",
+          "backlog and latency remain high on all replicas"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.08x normal (254 req/s)",
+          "all replicas p95 > 20000 ms (fleet normal 3643 ms)",
+          "backlog 4621 requests waiting",
+          "scale_out added replica-5 and replica-6 but all replicas still slow",
+          "no spare nodes remain"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "vectordb",
+          "contains": "latency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "All replicas are slow despite full capacity; suspect shared vectordb latency or index issue."
+        }
+       ],
+       "summary": "Rollback of memory limit fixed the OOMs but all replicas remain slow with high backlog, so I'm investigating the shared vector database as the likely bottleneck."
+      }
+     },
+     {
+      "step": 76,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+          "replica-2 and replica-3 now up with memory_limit_gb=80",
+          "backlog and latency remain high on all replicas"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.08x normal (254 req/s)",
+          "all replicas p95 > 20000 ms (fleet normal 3643 ms)",
+          "backlog 4621 requests waiting",
+          "scale_out added replica-5 and replica-6 but all replicas still slow",
+          "no spare nodes remain"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H4",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "identity-service is external and owned by identity team",
+          "all replicas slow and queue backlog high despite no local resource issue",
+          "vectordb latency normal (35-45 ms)",
+          "no spare nodes to scale out further"
+         ],
+         "status": "suspected",
+         "confidence": 0.4
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "identity-service",
+          "contains": "latency"
+         },
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Check if identity-service is the bottleneck causing all replicas to be slow and queue to back up."
+        }
+       ],
+       "summary": "All replicas slow and queue backlog high despite normal vectordb latency and no spare capacity; suspect external identity-service bottleneck and escalate if confirmed."
+      }
+     },
+     {
+      "step": 76,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+          "replica-2 and replica-3 now up with memory_limit_gb=80",
+          "backlog and latency remain high on all replicas"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.08x normal (254 req/s)",
+          "all replicas p95 > 20000 ms (fleet normal 3643 ms)",
+          "backlog 4621 requests waiting",
+          "scale_out added replica-5 and replica-6 but all replicas still slow",
+          "no spare nodes remain"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.6
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+          "replica-2 and replica-3 now up with memory_limit_gb=80",
+          "backlog and latency remain high on all replicas"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H4",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "identity-service is external and owned by identity team",
+          "all replicas slow and queue backlog high despite no local resource issue",
+          "vectordb latency normal (35-45 ms)",
+          "no spare nodes to scale out further"
+         ],
+         "status": "suspected",
+         "confidence": 0.7
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity",
+          "summary": "All replicas slow and queue backlog high; identity-service metrics show no data and it is the shared external dependency before the queue. Please investigate identity-service latency/errors."
+         },
+         "hypothesis": "H4",
+         "purpose": "escalate",
+         "why": "All replicas share identity-service; local resources and vectordb are normal, no spare capacity to scale out, so the bottleneck is likely the external identity-service."
+        }
+       ],
+       "summary": "Escalating to identity team: all replicas slow and queue backlog high with no local resource issue, pointing to the shared external identity-service as the bottleneck."
+      }
+     },
+     {
+      "step": 150,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+          "replica-2 and replica-3 now up with memory_limit_gb=80",
+          "backlog and latency remain high on all replicas"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "queue",
+          "gateway",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.16x normal (263 req/s)",
+          "all replicas p95 > 20000 ms (fleet normal 3643 ms)",
+          "backlog 4964 requests waiting",
+          "scale_out added replica-5 and replica-6 but all replicas still slow",
+          "no spare nodes remain"
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.7
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "memory_limit_gb rolled back to 80 on replica-2, replica-3",
+          "replica-2 and replica-3 now up with memory_limit_gb=80",
+          "backlog and latency remain high on all replicas"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.0
+        },
+        {
+         "id": "H4",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "identity-service is external and owned by identity team",
+          "all replicas slow and queue backlog high despite no local resource issue",
+          "vectordb latency normal (35-45 ms)",
+          "no spare nodes to scale out further"
+         ],
+         "status": "escalated",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H4",
+         "purpose": "investigate",
+         "why": "Identity team has been escalated; waiting for their response before taking further action."
+        }
+       ],
+       "summary": "Waiting for identity team to address the external dependency issue causing all replicas to be slow and queue backlog high."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 76,
+      "team": "identity",
+      "summary": "All replicas slow and queue backlog high; identity-service metrics show no data and it is the shared external dependency before the queue. Please investigate identity-service latency/errors.",
+      "hypothesis": "H4",
+      "automatic": false
+     },
+     {
+      "step": 154,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-4, slow:replica-5, slow:replica-6. Ledger: H1 bad_config memory_limit_gb on ['replica-2', 'replica-3'] [ruled_out]; H2 overload  on ['queue', 'gateway', 'replica-1', 'replica-2', 'replica-3', 'replica-4', 'replica-5', 'replica-6'] [partly_fixed]; H3 bad_config  on ['replica-2', 'replica-3'] [ruled_out]; H4 external_dependency  on ['identity-service'] [escalated]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 10 symptoms open"
+   }
+  ],
+  "cost": 0.011190540799999999,
+  "calls": 36,
+  "tokens_in": 82226,
+  "tokens_out": 18910
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 38,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.9x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "low_memory_limit",
+   "step": 41,
+   "target": [
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "memory_limit_gb 40 deployed to replica-2, replica-3",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 41,
+   "time": "2026-10-30T09:06:50",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

@@ -31,7 +31,11 @@ NAMES = {
     "no-canaries": "Sanad without canary questions", "trust-model": "Sanad trusting the model's \"fixed\"",
     "no-governor": "Sanad without the governor", "routine-only": "Sanad, cheap model only",
     "strong-only": "Sanad, stronger model only",
+    "sanad-noise1": "Sanad, same faults, different noise (1)", "sanad-noise2": "Sanad, same faults, different noise (2)",
+    "sanad-v1": "Sanad v1 (first version)", "sanad-v2": "**Sanad v2** (frozen, used for held-out)",
 }
+ORDER = ["restart", "rollback", "sanad", "sanad-noise1", "sanad-noise2", "routine-only", "strong-only",
+         "no-canaries", "trust-model", "no-governor", "sanad-v1", "sanad-v2"]
 
 
 def pct(x):
@@ -57,7 +61,8 @@ def main():
                 "Built by `scripts/make_results.py` from `runs/*/summary.json`. Each run folder also holds one",
                 "trace per scenario: the score, every model turn, every action and the hidden answer key.", ""]
     for folder in ("heldout", "practice"):
-        labels = [r for r in runs if r.startswith(folder + "-")]
+        labels = sorted((r for r in runs if r.startswith(folder + "-")),
+                        key=lambda r: ORDER.index(r.split("-", 1)[1]) if r.split("-", 1)[1] in ORDER else 99)
         if labels:
             sections += [f"## {folder.replace('heldout', 'Held-out set (24 scenarios)').replace('practice', 'Practice set (21 scenarios)')}",
                          "", table(labels), ""]

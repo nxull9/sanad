@@ -1,0 +1,132 @@
+{
+ "model": "deepseek/deepseek-v4-flash",
+ "request": {
+  "model": "deepseek/deepseek-v4-flash",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Sanad, the on-call agent for an AI serving platform that answers users in Arabic and English.\nRequests flow: gateway -> identity-service (owned by the identity team, not you) -> queue -> workers -> model replicas (one per GPU node) -> vector database.\n\nEach turn you get the open symptoms (found by monitoring code), the evidence, your ledger of hypotheses, and what your last actions did. Monitoring code, not you, decides whether a fix worked.\n\nHow to work:\n- Several causes can be active at once. Keep one hypothesis per cause. Every open symptom must appear in `explains` of a hypothesis that is not ruled_out.\n- Back each hypothesis with concrete evidence: a metric, a log line, a change log entry, a canary answer.\n- The most recent change is not always the cause. A change can only explain symptoms on what it touched, starting after it was made.\n- Canary questions are asked of each replica separately. If only replicas with a certain setting answer wrongly, suspect that setting. If every replica fails the same kind of question, suspect what they share, such as the vector database. If one replica fails while its settings match healthy ones, suspect its GPU node.\n- Restarting does not undo a bad deploy; rolling back does. Roll back only the replicas that carry the bad value.\n- Overload: when incoming traffic is well above normal and every replica is slow or the queue backs up, add capacity with scale_out. set_weight only moves load between replicas; it adds none.\n- A replica that crashed (segfault, non-zero exit) while its node shows no hardware trouble (no ECC errors, normal temperature) needs a restart. Drain a node only when the node itself shows hardware trouble.\n- A symptom that follows from a cause already in your ledger (for example, lost capacity after hardware went down) belongs in that hypothesis's explains, not in a new cause.\n- Change only what the evidence points at. Leave healthy components alone.\n- Some causes are not yours to fix: another team's service, hardware that needs hands, power. Mitigate what you safely can, then escalate with a clear summary.\n- If a fix did not clear its symptoms, revise the hypothesis rather than repeat the fix.\n\nActions (one to three per turn):\n- rollback {\"key\": setting, \"replicas\": [...]} returns a setting to its previous value. Replica settings: model_version, template, quantization, tokenizer, server_build, memory_limit_gb (give \"replicas\"). Gateway: timeout_ms, log_level. Workers: max_concurrency (no \"replicas\").\n- restart {\"target\": \"replica-N\" or \"workers\"}\n- drain {\"node\": \"gpu-N\"} moves that node's replica to a spare node and takes the node out of service.\n- set_weight {\"replica\": \"replica-N\", \"weight\": 0 to 1} sends less or no traffic to a replica. Undoable.\n- scale_out {\"count\": 1 or 2} adds replicas on spare nodes.\n- failover_vectordb {} switches to the standby vector database.\n- rebuild_index {} rebuilds the active vector index (about 200 s).\n- escalate {\"team\": \"...\", \"summary\": \"...\"} hands a cause to people.\n- inspect {\"what\": \"logs\" or \"metrics\" or \"canaries\", \"component\": \"...\", \"contains\": \"...\"} reads more and changes nothing.\n- wait {} changes nothing.\n\nReply with JSON only:\n{\"ledger\": [{\"id\": \"H1\", \"type\": TYPE, \"component\": [\"...\"], \"setting\": \"setting key or null\", \"explains\": [\"symptom keys\"], \"evidence\": [\"short facts\"], \"status\": \"suspected\" or \"ruled_out\", \"confidence\": 0.0 to 1.0}],\n \"actions\": [{\"action\": \"...\", \"args\": {}, \"hypothesis\": \"H1\", \"purpose\": \"fix\" or \"experiment\" or \"investigate\" or \"escalate\", \"why\": \"short reason\"}],\n \"summary\": \"one sentence\"}\nTYPE is one of: bad_release, bad_config, crash, deadlock, overload, gpu_overheating, gpu_silent_corruption, index_corruption, external_dependency, power_failure, unknown."
+   },
+   {
+    "role": "user",
+    "content": "STEP 160. Incident opened at step 122. Each step is 10 seconds.\n\nOPEN SYMPTOMS\n- backlog:queue: 4959 requests waiting (normal 0)\n- drops:queue: queue full: dropped 1258 requests in the last 3 steps\n- errors:gateway: error rate 15.8% (normal 0.08%)\n- slow:gateway: p95 latency 24731 ms (normal 3620 ms)\n- slow:replica-1: replica-1 p95 latency 25968 ms (fleet normal 3639 ms)\n- slow:replica-2: replica-2 p95 latency 26370 ms (fleet normal 3639 ms)\n- slow:replica-3: replica-3 p95 latency 25293 ms (fleet normal 3639 ms)\n- slow:replica-5: replica-5 p95 latency 26348 ms (fleet normal 3639 ms)\n- slow:replica-6: replica-6 p95 latency 25453 ms (fleet normal 3639 ms)\n\nYOUR LEDGER\n- H1 overload setting=None on ['replica-3'] status=not_fixed explains=['slow:replica-3'] evidence=['incoming traffic 2.15x normal', 'replica-3 p95 latency high'] history=['step 132 set_weight -> not_fixed']\n- H2 unknown setting=None on ['replica-4'] status=fixed explains=['slow:replica-4'] evidence=['fixed by set_weight'] history=['step 124 set_weight -> fixed']\n- H3 overload setting=None on ['gateway', 'workers', 'replica-1', 'replica-2', 'replica-5', 'replica-6'] status=not_fixed explains=['backlog:queue', 'drops:queue', 'errors:gateway', 'slow:gateway', 'slow:replica-1', 'slow:replica-2', 'slow:replica-5', 'slow:replica-6'] evidence=['incoming traffic 2.15x normal', 'all active replicas slow', 'queue backlog growing', 'queue full drops 740', 'gateway error rate 14.2%'] history=['step 146 set_weight -> not_fixed']\n\nYOUR RECENT ACTIONS\n- step 146 set_weight {\"replica\": \"replica-4\", \"weight\": 1.0} for H3: replica-4 traffic weight 0 -> 1.0; checked at step 154: cleared nothing, still open ['backlog:queue', 'drops:queue', 'errors:gateway', 'slow:gateway', 'slow:replica-1', 'slow:replica-2', 'slow:replica-5', 'slow:replica-6']; undone because it cleared nothing (replica-4 traffic weight 1.0 -> 0)\n- step 158 scale_out {\"count\": 2} for H3: no spare GPU node to scale onto\n\nPLATFORM\npath: gateway -> identity-service (external, owned by identity team) -> queue -> workers -> replicas -> vectordb\nreplica-1: node gpu-1, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-2: node gpu-2, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-3: node gpu-3, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-4: node gpu-4, up, traffic weight 0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-5: node gpu-5, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nreplica-6: node gpu-6, up, traffic weight 1.0, model_version=allam-34b-v2.3, template=chat-tpl-12, quantization=fp8, tokenizer=tok-2.1, server_build=serve-1.7.2, memory_limit_gb=80\nnodes: gpu-1 rack-a, gpu-2 rack-a, gpu-3 rack-a, gpu-4 rack-b, gpu-5 rack-b, gpu-6 rack-b; spare: none\ngateway: {'timeout_ms': 30000, 'log_level': 'debug'}; workers: {'max_concurrency': 64, 'count': 8}; vectordb: {'active': 'primary', 'rebuilding': False}\nincoming traffic: 267 req/s, 2.18x normal\n\nCHANGE LOG (newest last)\nstep 35 09:05:50: gateway log_level info -> debug on gateway by mfahad (OPS-140: more logging for audit)\nstep 41 09:06:50: model-server memory_limit_gb 80 -> 40 on replica-2, replica-3 by ci-bot (REL-2291: right-size container memory)\nstep 42 09:07:00: model-server memory_limit_gb 40 -> 80 on replica-2, replica-3 by you (Sanad) (INC: rollback)\n\nLOG LINES NOT SEEN BEFORE THE INCIDENT (since step 116; count, first step, example)\n35x from step 125 WARN queue: backlog 1072 requests, oldest waiting 5s\n\nALLOWANCE LEFT: 2 turns, 7 changes. Mode: autonomous."
+   }
+  ],
+  "temperature": 0,
+  "max_tokens": 1500,
+  "response_format": {
+   "type": "json_object"
+  },
+  "reasoning": {
+   "enabled": false
+  },
+  "usage": {
+   "include": true
+  }
+ },
+ "text": "{\n  \"ledger\": [\n    {\n      \"id\": \"H1\",\n      \"type\": \"overload\",\n      \"component\": [\"replica-3\"],\n      \"setting\": null,\n      \"explains\": [\"slow:replica-3\"],\n      \"evidence\": [\"incoming traffic 2.15x normal\", \"replica-3 p95 latency high\"],\n      \"status\": \"suspected\",\n      \"confidence\": 0.6\n    },\n    {\n      \"id\": \"H2\",\n      \"type\": \"unknown\",\n      \"component\": [\"replica-4\"],\n      \"setting\": null,\n      \"explains\": [],\n      \"evidence\": [\"fixed by set_weight\"],\n      \"status\": \"fixed\",\n      \"confidence\": 1.0\n    },\n    {\n      \"id\": \"H3\",\n      \"type\": \"overload\",\n      \"component\": [\"gateway\", \"workers\", \"replica-1\", \"replica-2\", \"replica-5\", \"replica-6\"],\n      \"setting\": null,\n      \"explains\": [\"backlog:queue\", \"drops:queue\", \"errors:gateway\", \"slow:gateway\", \"slow:replica-1\", \"slow:replica-2\", \"slow:replica-5\", \"slow:replica-6\"],\n      \"evidence\": [\"incoming traffic 2.15x normal\", \"all active replicas slow\", \"queue backlog growing\", \"queue full drops 740\", \"gateway error rate 14.2%\"],\n      \"status\": \"suspected\",\n      \"confidence\": 0.9\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"escalate\",\n      \"args\": {\n        \"team\": \"infra\",\n        \"summary\": \"Incoming traffic is 2.18x normal, all active replicas are slow, queue is full and dropping requests, and there are no spare GPU nodes to scale out. Need additional capacity or traffic throttling.\"\n      },\n      \"hypothesis\": \"H3\",\n      \"purpose\": \"escalate\",\n      \"why\": \"Overload cannot be fixed by available actions (no spare nodes, set_weight already tried, rollback not applicable). Need infra team to add nodes or throttle traffic.\"\n    }\n  ],\n  \"summary\": \"Overload due to 2.18x normal traffic; no spare nodes to scale out, escalating to infra team for capacity or throttling.\"\n}",
+ "reply": {
+  "ledger": [
+   {
+    "id": "H1",
+    "type": "overload",
+    "component": [
+     "replica-3"
+    ],
+    "setting": null,
+    "explains": [
+     "slow:replica-3"
+    ],
+    "evidence": [
+     "incoming traffic 2.15x normal",
+     "replica-3 p95 latency high"
+    ],
+    "status": "suspected",
+    "confidence": 0.6
+   },
+   {
+    "id": "H2",
+    "type": "unknown",
+    "component": [
+     "replica-4"
+    ],
+    "setting": null,
+    "explains": [],
+    "evidence": [
+     "fixed by set_weight"
+    ],
+    "status": "fixed",
+    "confidence": 1.0
+   },
+   {
+    "id": "H3",
+    "type": "overload",
+    "component": [
+     "gateway",
+     "workers",
+     "replica-1",
+     "replica-2",
+     "replica-5",
+     "replica-6"
+    ],
+    "setting": null,
+    "explains": [
+     "backlog:queue",
+     "drops:queue",
+     "errors:gateway",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-2",
+     "slow:replica-5",
+     "slow:replica-6"
+    ],
+    "evidence": [
+     "incoming traffic 2.15x normal",
+     "all active replicas slow",
+     "queue backlog growing",
+     "queue full drops 740",
+     "gateway error rate 14.2%"
+    ],
+    "status": "suspected",
+    "confidence": 0.9
+   }
+  ],
+  "actions": [
+   {
+    "action": "escalate",
+    "args": {
+     "team": "infra",
+     "summary": "Incoming traffic is 2.18x normal, all active replicas are slow, queue is full and dropping requests, and there are no spare GPU nodes to scale out. Need additional capacity or traffic throttling."
+    },
+    "hypothesis": "H3",
+    "purpose": "escalate",
+    "why": "Overload cannot be fixed by available actions (no spare nodes, set_weight already tried, rollback not applicable). Need infra team to add nodes or throttle traffic."
+   }
+  ],
+  "summary": "Overload due to 2.18x normal traffic; no spare nodes to scale out, escalating to infra team for capacity or throttling."
+ },
+ "usage": {
+  "prompt_tokens": 2362,
+  "completion_tokens": 530,
+  "total_tokens": 2892,
+  "cost": 0.000252684,
+  "is_byok": false,
+  "prompt_tokens_details": {
+   "cached_tokens": 768,
+   "cache_write_tokens": 0,
+   "audio_tokens": 0,
+   "video_tokens": 0
+  },
+  "cost_details": {
+   "upstream_inference_cost": 0.000252684,
+   "upstream_inference_prompt_cost": 0.000157284,
+   "upstream_inference_completions_cost": 9.54e-05
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "image_tokens": 0,
+   "audio_tokens": 0
+  }
+ },
+ "cost": 0.000252684
+}

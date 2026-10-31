@@ -1,0 +1,344 @@
+{
+ "score": {
+  "scenario": "h11",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 30,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "identity_outage",
+    "target": [
+     "identity-service"
+    ],
+    "silent": false,
+    "fixable": false,
+    "removed": null,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 0,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 5,
+  "strong_calls": 1,
+  "cost": 0.000427,
+  "tokens_in": 20395,
+  "tokens_out": 3707,
+  "escalations": [
+   {
+    "step": 38,
+    "team": "identity-team",
+    "summary": "Identity-service is returning 503 Connection Refused, causing 62% gateway error rate. Service appears down or unreachable.",
+    "hypothesis": "H1",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 38,
+    "first_symptoms": [
+     "errors:gateway"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "external_dependency",
+      "component": [
+       "identity-service"
+      ],
+      "setting": null,
+      "explains": [
+       "errors:gateway"
+      ],
+      "evidence": [
+       "Log line: '503 from identity-service: connection refused'",
+       "Identity-service is owned by the identity team (external to this platform)"
+      ],
+      "confidence": 0.95,
+      "attempts": 0,
+      "history": [],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 38,
+      "action": "escalate",
+      "args": {
+       "team": "identity-team",
+       "summary": "Identity-service is returning 503 Connection Refused, causing 62% gateway error rate. Service appears down or unreachable."
+      },
+      "hypothesis": "H1",
+      "purpose": "escalate",
+      "why": "The root cause is an external dependency failure owned by another team; we cannot fix it directly.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "external_dependency",
+       "setting": null,
+       "component": [
+        "identity-service"
+       ]
+      },
+      "result": "handed to identity-team"
+     }
+    ],
+    "turns": [
+     {
+      "step": 38,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "(UNEXPLAINED) errors:gateway: error rate 62.0% (normal 0.07%)"
+         ],
+         "evidence": [
+          "Log line: '503 from identity-service: connection refused'",
+          "Identity-service is owned by the identity team (external to this platform)"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "identity-team",
+          "summary": "Identity-service is returning 503 Connection Refused, causing 62% gateway error rate. Service appears down or unreachable."
+         },
+         "hypothesis": "H1",
+         "purpose": "escalate",
+         "why": "The root cause is an external dependency failure owned by another team; we cannot fix it directly."
+        }
+       ],
+       "summary": "Escalated to identity team as their service is refusing connections, causing high gateway error rates."
+      }
+     },
+     {
+      "step": 40,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "(UNEXPLAINED) errors:gateway: error rate 62.0% (normal 0.07%)"
+         ],
+         "evidence": [
+          "Log line: '503 from identity-service: connection refused'",
+          "Identity-service is owned by the identity team (external to this platform)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Incident is escalated to the identity team; waiting for their fix or update."
+        }
+       ],
+       "summary": "The high gateway error rate is caused by the external identity-service being unreachable (503 Connection Refused); this has been escalated to the identity team and no further action can be taken by this platform until they resolve it."
+      }
+     },
+     {
+      "step": 44,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "(UNEXPLAINED) errors:gateway: error rate 62.0% (normal 0.07%)"
+         ],
+         "evidence": [
+          "Log line: '503 from identity-service: connection refused'",
+          "Identity-service is owned by the identity team (external to this platform)"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H1",
+         "purpose": "investigate",
+         "why": "Waiting for identity-team to resolve the external dependency issue; no internal action can fix a connection refused error in an external service."
+        }
+       ],
+       "summary": "The high gateway error rate is caused by the identity-service returning 503 Connection Refused, which has been escalated to the identity team."
+      }
+     },
+     {
+      "step": 48,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "setting": null,
+         "explains": [
+          "(UNEXPLAINED) errors:gateway: error rate 62.0% (normal 0.07%)"
+         ],
+         "evidence": [
+          "Log line: '503 from identity-service: connection refused'",
+          "Identity-service is owned by the identity team (external to this platform)"
+         ],
+         "status": "suspected",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [],
+       "summary": "The high gateway error rate is caused by the external identity-service being unreachable; this is an external dependency issue already escalated."
+      }
+     },
+     {
+      "step": 52,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "errors:gateway"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "external_dependency",
+         "component": [
+          "identity-service"
+         ],
+         "explains": [
+          "errors:gateway"
+         ],
+         "evidence": [
+          "Log line: '503 from identity-service: connection refused'",
+          "Identity-service is owned by the identity team (external to this platform)"
+         ],
+         "status": "escalated",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [],
+       "summary": "Incident is caused by identity-service outage, already escalated; no further action possible."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 38,
+      "team": "identity-team",
+      "summary": "Identity-service is returning 503 Connection Refused, causing 62% gateway error rate. Service appears down or unreachable.",
+      "hypothesis": "H1",
+      "automatic": false
+     }
+    ],
+    "changes": 0,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 1 symptoms open"
+   }
+  ],
+  "cost": 0.0013264339,
+  "calls": 12,
+  "tokens_in": 20395,
+  "tokens_out": 3707
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "identity_outage",
+   "step": 35,
+   "target": [
+    "identity-service"
+   ],
+   "cause": "identity-service (owned by the identity team) is down",
+   "fix": "escalate",
+   "fixable": false,
+   "needs_human": "page the identity team",
+   "silent": false
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 37,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.7x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": []
+}

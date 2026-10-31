@@ -1,0 +1,1186 @@
+{
+ "score": {
+  "scenario": "h14",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 3,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 1,
+  "approvals": 0,
+  "model_calls": 9,
+  "strong_calls": 0,
+  "cost": 0.001384,
+  "tokens_in": 65873,
+  "tokens_out": 14542,
+  "escalations": [
+   {
+    "step": 68,
+    "team": "infrastructure",
+    "summary": "System is overloaded with 2.07x normal traffic (253 req/s). All 6 GPU nodes are active and saturated (p95 > 20s). Scale-out attempts fail due to zero spare GPU nodes. Immediate need for additional GPU capacity or traffic shedding/queuing strategy adjustment.",
+    "hypothesis": "H2",
+    "automatic": false
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "restarting:replica-2",
+     "restarting:replica-3",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [
+       "backlog:queue",
+       "errors:gateway",
+       "slow:gateway"
+      ],
+      "evidence": [
+       "rolled back at step 42",
+       "no longer crashing"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> partly_fixed"
+      ],
+      "status": "partly_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "evidence": [
+       "incoming traffic 262 req/s (2.14x normal)",
+       "all 6 replicas are up and showing high latency (>22s p95)",
+       "queue backlog 5125 requests persists despite scale out to 6 replicas",
+       "spare nodes: none",
+       "scale_out failed due to lack of spare nodes"
+      ],
+      "confidence": 1.0,
+      "attempts": 1,
+      "history": [
+       "step 42 scale_out -> not_fixed",
+       "step 56 scale_out -> partly_fixed"
+      ],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Restore memory limit to 80GB to allow replica-2 and replica-3 to start successfully, recovering lost capacity.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": "memory_limit_gb",
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-2', 'replica-3']",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "restarting:replica-2",
+        "restarting:replica-3"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "errors:gateway",
+        "slow:gateway"
+       ]
+      }
+     },
+     {
+      "step": 42,
+      "action": "scale_out",
+      "args": {
+       "count": 1
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Add a temporary replica to handle the 1.94x traffic surge while H1 is being fixed, reducing pressure on remaining healthy nodes.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5']",
+      "verified": {
+       "step": 52,
+       "cleared": [],
+       "still_open": [
+        "slow:replica-1",
+        "slow:replica-4"
+       ]
+      },
+      "undone": "removed ['replica-5']"
+     },
+     {
+      "step": 56,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Traffic is nearly 2x normal and all replicas are severely saturated. Adding 2 replicas will increase capacity to handle the load and reduce queue backlog/latency.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 66,
+       "cleared": [
+        "errors:gateway"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-3",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 66,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "All 6 available GPU nodes are active and overloaded. We need to add capacity. Since there are no spare nodes listed in the platform state, this action will likely fail or require provisioning new nodes if possible. If 'spare: none' is strict, we might be stuck, but typically scale_out attempts to provision. If it fails, we escalate.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 68,
+      "action": "escalate",
+      "args": {
+       "team": "infrastructure",
+       "summary": "System is overloaded with 2.07x normal traffic (253 req/s). All 6 GPU nodes are active and saturated (p95 > 20s). Scale-out attempts fail due to zero spare GPU nodes. Immediate need for additional GPU capacity or traffic shedding/queuing strategy adjustment."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Cannot fix overload without adding capacity; no spare nodes available for scale_out.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "handed to infrastructure"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "restarting:replica-2",
+          "restarting:replica-3",
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "step 41 change memory_limit_gb 80->40 on replica-2,3",
+          "ERROR replica-2/3: OOMKilled while loading weights: limit 40GB, need 68GB",
+          "replicas are DOWN/crashing, reducing capacity and causing queue backup and gateway timeouts"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 237 req/s (1.94x normal)",
+          "only 2 healthy replicas (1,4) handling load",
+          "p95 latency high on healthy replicas due to increased per-replica load"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Restore memory limit to 80GB to allow replica-2 and replica-3 to start successfully, recovering lost capacity."
+        },
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 1
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Add a temporary replica to handle the 1.94x traffic surge while H1 is being fixed, reducing pressure on remaining healthy nodes."
+        }
+       ],
+       "summary": "Rolling back the memory limit change on replica-2 and replica-3 to fix OOM crashes, and scaling out to handle current overload."
+      }
+     },
+     {
+      "step": 56,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "step 41 change memory_limit_gb 80->40 on replica-2,3 caused OOMKilled",
+          "rollback at step 42 restored memory_limit_gb to 80",
+          "replicas are now up but capacity is reduced (only 4 replicas vs potential 6 if we had more healthy ones, or rather, the system is struggling with load)",
+          "The rollback fixed the crash, but the backlog and errors persist because the remaining healthy replicas (1, 2, 3, 4) are overloaded by the high traffic (2.37x normal) and potentially still recovering from the previous state."
+         ],
+         "status": "partly_fixed",
+         "confidence": 0.9
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway"
+         ],
+         "evidence": [
+          "incoming traffic 239 req/s (1.96x normal)",
+          "all 4 active replicas show p95 latency > 30s (normal 3.6s)",
+          "queue backlog 5017 requests",
+          "scale_out added replica-5 but it was removed; we need more capacity",
+          "The high latency on ALL replicas indicates a systemic overload issue, not just a config error on specific nodes."
+         ],
+         "status": "not_fixed",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Traffic is nearly 2x normal and all replicas are severely saturated. Adding 2 replicas will increase capacity to handle the load and reduce queue backlog/latency."
+        }
+       ],
+       "summary": "The initial bad config (H1) has been rolled back, but the system remains in overload (H2) due to high traffic and insufficient capacity, causing widespread slowness and queue buildup. Scaling out by 2 replicas is required to restore service levels."
+      }
+     },
+     {
+      "step": 66,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42",
+          "no longer crashing"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 253 req/s (2.07x normal)",
+          "all 6 replicas are up and showing high latency (>19s p95)",
+          "queue backlog 4378 requests persists despite scale out to 6 replicas",
+          "spare nodes: none"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "All 6 available GPU nodes are active and overloaded. We need to add capacity. Since there are no spare nodes listed in the platform state, this action will likely fail or require provisioning new nodes if possible. If 'spare: none' is strict, we might be stuck, but typically scale_out attempts to provision. If it fails, we escalate."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated. max_concurrency is 64 with 8 workers (8 per worker). With 6 replicas, if each handles ~40 req/s, total throughput might be limited by worker concurrency or replica inference speed. Inspecting helps confirm if bottleneck is compute or queue processing."
+        }
+       ],
+       "summary": "System is severely overloaded with 2.07x normal traffic across all 6 replicas; attempting to scale out further and inspecting worker metrics to identify bottlenecks."
+      }
+     },
+     {
+      "step": 68,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42",
+          "no longer crashing"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 253 req/s (2.07x normal)",
+          "all 6 replicas are up and showing high latency (>19s p95)",
+          "queue backlog 4378 requests persists despite scale out to 6 replicas",
+          "spare nodes: none"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated at max_concurrency=64, which would bottleneck the system despite available replica capacity."
+        },
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Wait for metrics data to confirm worker saturation before deciding on further scaling or config changes."
+        }
+       ],
+       "summary": "Investigating worker saturation as a potential bottleneck contributing to the overload, since no spare GPU nodes are available for further scaling."
+      }
+     },
+     {
+      "step": 68,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42",
+          "no longer crashing"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 253 req/s (2.07x normal)",
+          "all 6 replicas are up and showing high latency (>19s p95)",
+          "queue backlog 4301 requests persists despite scale out to 6 replicas",
+          "spare nodes: none",
+          "scale_out failed due to lack of spare nodes"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch_rps"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Verify if workers are saturated at current concurrency limit (64) with 253 req/s to confirm bottleneck is compute capacity vs concurrency tuning."
+        },
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infrastructure",
+          "summary": "System is overloaded with 2.07x normal traffic (253 req/s). All 6 GPU nodes are active and saturated (p95 > 20s). Scale-out attempts fail due to zero spare GPU nodes. Immediate need for additional GPU capacity or traffic shedding/queuing strategy adjustment."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Cannot fix overload without adding capacity; no spare nodes available for scale_out."
+        }
+       ],
+       "summary": "Overload persists due to insufficient GPU capacity (no spares); escalated to infrastructure for scaling support."
+      }
+     },
+     {
+      "step": 158,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42",
+          "no longer crashing"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 265 req/s (2.17x normal)",
+          "all 6 replicas are up and showing high latency (>22s p95)",
+          "queue backlog 4929 requests persists despite scale out to 6 replicas",
+          "spare nodes: none",
+          "scale_out failed due to lack of spare nodes"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "No further actions can be taken autonomously as capacity is exhausted and infrastructure team has been escalated. Waiting for external intervention or traffic normalization."
+        }
+       ],
+       "summary": "System remains critically overloaded with 2.17x normal traffic and no spare GPU nodes available for scaling; all symptoms persist despite previous fixes and escalation to infrastructure team."
+      }
+     },
+     {
+      "step": 162,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42",
+          "no longer crashing"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 257 req/s (2.11x normal)",
+          "all 6 replicas are up and showing high latency (>22s p95)",
+          "queue backlog 5007 requests persists despite scale out to 6 replicas",
+          "spare nodes: none",
+          "scale_out failed due to lack of spare nodes"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Overload is already escalated to infrastructure for capacity addition. No immediate fix available within my control (no spare nodes). Waiting for external action or traffic drop."
+        }
+       ],
+       "summary": "Incident remains in overload state with all replicas saturated; escalated to infrastructure for GPU capacity expansion as no spare nodes are available."
+      }
+     },
+     {
+      "step": 168,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42",
+          "no longer crashing"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 260 req/s (2.13x normal)",
+          "all 6 replicas are up and showing high latency (>22s p95)",
+          "queue backlog 5037 requests persists despite scale out to 6 replicas",
+          "spare nodes: none",
+          "scale_out failed due to lack of spare nodes"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "No capacity available to scale out; waiting for potential traffic drop or manual intervention"
+        }
+       ],
+       "summary": "Overload persists with no spare nodes for scaling; H1 is ruled out."
+      }
+     },
+     {
+      "step": 172,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42",
+          "no longer crashing"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 262 req/s (2.14x normal)",
+          "all 6 replicas are up and showing high latency (>22s p95)",
+          "queue backlog 5125 requests persists despite scale out to 6 replicas",
+          "spare nodes: none",
+          "scale_out failed due to lack of spare nodes"
+         ],
+         "status": "escalated",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "No capacity available to scale out; waiting for external intervention or traffic drop"
+        }
+       ],
+       "summary": "Overload persists with no spare nodes for scaling; H1 is ruled out after rollback."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 68,
+      "team": "infrastructure",
+      "summary": "System is overloaded with 2.07x normal traffic (253 req/s). All 6 GPU nodes are active and saturated (p95 > 20s). Scale-out attempts fail due to zero spare GPU nodes. Immediate need for additional GPU capacity or traffic shedding/queuing strategy adjustment.",
+      "hypothesis": "H2",
+      "automatic": false
+     }
+    ],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": false,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 10 symptoms open"
+   }
+  ],
+  "cost": 0.004042578400000001,
+  "calls": 31,
+  "tokens_in": 65873,
+  "tokens_out": 14542
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 38,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.9x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "low_memory_limit",
+   "step": 41,
+   "target": [
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "memory_limit_gb 40 deployed to replica-2, replica-3",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 41,
+   "time": "2026-10-30T09:06:50",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}

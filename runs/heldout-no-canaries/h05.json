@@ -1,0 +1,75 @@
+{
+ "score": {
+  "scenario": "h05",
+  "faults": 1,
+  "success": false,
+  "false_alarm": false,
+  "detected": false,
+  "detect_seconds": null,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "bad_quantization",
+    "target": [
+     "replica-2"
+    ],
+    "silent": true,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": false,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 0,
+  "changes": 0,
+  "unneeded_changes": 0,
+  "blocked": 0,
+  "undone": 0,
+  "approvals": 0,
+  "model_calls": 0,
+  "strong_calls": 0,
+  "cost": 0.0,
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "escalations": []
+ },
+ "report": {
+  "incidents": [],
+  "cost": 0.0,
+  "calls": 0,
+  "tokens_in": 0,
+  "tokens_out": 0
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "bad_quantization",
+   "step": 38,
+   "target": [
+    "replica-2"
+   ],
+   "cause": "quantization int4-awq-unvalidated deployed to replica-2",
+   "fix": "rollback:quantization",
+   "fixable": true,
+   "needs_human": null,
+   "silent": true
+  }
+ ],
+ "changes": [
+  {
+   "step": 38,
+   "time": "2026-10-30T09:06:20",
+   "component": "model-server",
+   "key": "quantization",
+   "old": "fp8",
+   "new": "int4-awq-unvalidated",
+   "scope": [
+    "replica-2"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "int4 to halve GPU memory"
+  }
+ ]
+}

@@ -1,0 +1,2449 @@
+{
+ "score": {
+  "scenario": "h14",
+  "faults": 2,
+  "success": false,
+  "false_alarm": false,
+  "detected": true,
+  "detect_seconds": 40,
+  "recover_seconds": null,
+  "causes": [
+   {
+    "fault": "traffic_spike",
+    "target": [
+     "gateway"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": false,
+    "diagnosed": true,
+    "escalated": true
+   },
+   {
+    "fault": "low_memory_limit",
+    "target": [
+     "replica-2",
+     "replica-3"
+    ],
+    "silent": false,
+    "fixable": true,
+    "removed": true,
+    "diagnosed": true,
+    "escalated": false
+   }
+  ],
+  "herring_blamed": false,
+  "over_escalated": 1,
+  "changes": 5,
+  "unneeded_changes": 1,
+  "blocked": 0,
+  "undone": 2,
+  "approvals": 0,
+  "model_calls": 18,
+  "strong_calls": 11,
+  "cost": 0.00419,
+  "tokens_in": 98987,
+  "tokens_out": 23769,
+  "escalations": [
+   {
+    "step": 56,
+    "team": "infra",
+    "summary": "Overload: traffic 2x normal, all replicas saturated, no spare nodes. Need additional capacity or traffic management.",
+    "hypothesis": "H2",
+    "automatic": false
+   },
+   {
+    "step": 160,
+    "team": "infra",
+    "summary": "Incoming traffic is 2.18x normal, all active replicas are slow, queue is full and dropping requests, and there are no spare GPU nodes to scale out. Need additional capacity or traffic throttling.",
+    "hypothesis": "H3",
+    "automatic": false
+   },
+   {
+    "step": 166,
+    "team": "on-call engineer",
+    "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-5, slow:replica-6. Ledger: H1 overload  on ['replica-3'] [not_fixed]; H2 unknown  on ['replica-4'] [fixed]; H3 overload  on ['gateway', 'workers', 'replica-1', 'replica-2', 'replica-5', 'replica-6'] [escalated]",
+    "hypothesis": null,
+    "automatic": true
+   }
+  ]
+ },
+ "report": {
+  "incidents": [
+   {
+    "id": 1,
+    "opened": 42,
+    "first_symptoms": [
+     "backlog:queue",
+     "errors:gateway",
+     "restarting:replica-2",
+     "restarting:replica-3",
+     "slow:gateway",
+     "slow:replica-1",
+     "slow:replica-4"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "restarting:replica-2",
+       "restarting:replica-3"
+      ],
+      "evidence": [
+       "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+       "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41",
+       "step 42 rollback -> fixed"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [
+       "step 42 rollback -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-3",
+       "replica-4",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "evidence": [
+       "incoming traffic 247 req/s (2.01x normal)",
+       "all replicas slow p95 ~17s",
+       "queue backlog 3461 requests",
+       "workers max_concurrency 64 likely saturated",
+       "no spare GPU nodes to scale out"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 42 scale_out -> partly_fixed"
+      ],
+      "status": "escalated"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [],
+      "evidence": [
+       "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+       "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H4": {
+      "id": "H4",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [],
+      "evidence": [
+       "rolled back at step 42, OOMKilled cleared"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H5": {
+      "id": "H5",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [],
+      "evidence": [
+       "rolled back at step 42, OOMKilled cleared"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     },
+     "H6": {
+      "id": "H6",
+      "type": "bad_config",
+      "component": [
+       "replica-2",
+       "replica-3"
+      ],
+      "setting": "memory_limit_gb",
+      "explains": [],
+      "evidence": [
+       "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+       "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41",
+       "step 42 rollback -> fixed"
+      ],
+      "confidence": 1.0,
+      "attempts": 0,
+      "history": [],
+      "status": "ruled_out"
+     }
+    },
+    "actions": [
+     {
+      "step": 42,
+      "action": "rollback",
+      "args": {
+       "key": "memory_limit_gb",
+       "replicas": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Restore memory limit to 80GB so replicas can load weights and come back up.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "bad_config",
+       "setting": null,
+       "component": [
+        "replica-2",
+        "replica-3"
+       ]
+      },
+      "result": "rolled back memory_limit_gb on ['replica-2', 'replica-3']",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "restarting:replica-2",
+        "restarting:replica-3"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 42,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Add capacity on spare nodes to handle 2x traffic and compensate for the two down replicas.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "replica-1",
+        "replica-4"
+       ]
+      },
+      "result": "added ['replica-5', 'replica-6']",
+      "verified": {
+       "step": 52,
+       "cleared": [
+        "errors:gateway"
+       ],
+       "still_open": [
+        "backlog:queue",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-4"
+       ]
+      }
+     },
+     {
+      "step": 52,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Traffic is nearly 2x normal and all replicas are saturated. Adding capacity to handle the load and reduce queue backlog.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 54,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Traffic is nearly 2x normal and queue is backing up; need more capacity to process requests faster",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 56,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Overload: traffic 2x normal, all replicas saturated, no spare nodes. Need additional capacity or traffic management."
+      },
+      "hypothesis": "H2",
+      "purpose": "escalate",
+      "why": "Cannot scale out due to no spare nodes; overload persists despite previous scale_out. Need human intervention for capacity planning.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-3",
+        "replica-4",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "handed to infra"
+     }
+    ],
+    "turns": [
+     {
+      "step": 42,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "errors:gateway",
+       "restarting:replica-2",
+       "restarting:replica-3",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "explains": [
+          "restarting:replica-2",
+          "restarting:replica-3"
+         ],
+         "evidence": [
+          "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+          "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41"
+         ],
+         "status": "suspected",
+         "confidence": 0.95
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "replica-1",
+          "replica-4"
+         ],
+         "explains": [
+          "backlog:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "incoming traffic 246 req/s, 2.01x normal",
+          "replica-2 and replica-3 down, losing 2 of 4 replicas",
+          "queue backlog 2148, gateway p95 22898ms, replica-1 and replica-4 p95 ~22s"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "rollback",
+         "args": {
+          "key": "memory_limit_gb",
+          "replicas": [
+           "replica-2",
+           "replica-3"
+          ]
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Restore memory limit to 80GB so replicas can load weights and come back up."
+        },
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Add capacity on spare nodes to handle 2x traffic and compensate for the two down replicas."
+        }
+       ],
+       "summary": "Replica-2 and replica-3 were OOMKilled by a bad memory limit change; rolling back and scaling out to restore capacity and relieve overload."
+      }
+     },
+     {
+      "step": 52,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+          "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-4",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 238 req/s, 1.95x normal",
+          "all 6 replicas are slow (p95 ~18s vs normal 3.6s)",
+          "queue backlog 3883 requests",
+          "workers max_concurrency 64 may be saturated with high-latency requests"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Traffic is nearly 2x normal and all replicas are saturated. Adding capacity to handle the load and reduce queue backlog."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are fully saturated to confirm overload hypothesis and determine if concurrency tuning is needed."
+        }
+       ],
+       "summary": "All replicas are slow due to sustained high traffic (2x normal) causing queue buildup; scaling out to add capacity and investigating worker saturation."
+      }
+     },
+     {
+      "step": 54,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42, OOMKilled cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 242 req/s (1.97x normal)",
+          "all replicas slow p95 ~17s",
+          "queue backlog 3611 requests",
+          "workers max_concurrency 64 likely saturated"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Traffic is nearly 2x normal and queue is backing up; need more capacity to process requests faster"
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "active_concurrency"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Verify if workers are the bottleneck or if replicas are just slow"
+        }
+       ],
+       "summary": "Overload persists with high traffic and queue backlog; attempting to scale out despite no spare nodes reported previously (checking for new availability) and investigating worker concurrency metrics."
+      }
+     },
+     {
+      "step": 56,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42, OOMKilled cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 247 req/s (2.01x normal)",
+          "all replicas slow p95 ~17s",
+          "queue backlog 3461 requests",
+          "workers max_concurrency 64 likely saturated",
+          "no spare GPU nodes to scale out"
+         ],
+         "status": "active",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "utilization"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are the bottleneck or if replicas are waiting for workers"
+        },
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H2",
+         "purpose": "experiment",
+         "why": "Wait to see if queue drains naturally as traffic fluctuates"
+        }
+       ],
+       "summary": "Overload persists due to high traffic and no spare capacity; investigating worker metrics to confirm bottleneck."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+          "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41",
+          "step 42 rollback -> fixed"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 247 req/s (2.01x normal)",
+          "all replicas slow p95 ~17s",
+          "queue backlog 3461 requests",
+          "workers max_concurrency 64 likely saturated",
+          "no spare GPU nodes to scale out"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H3",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+          "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H4",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42, OOMKilled cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H5",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "rolled back at step 42, OOMKilled cleared"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "queue_depth"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated and if increasing max_concurrency could help absorb the backlog."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-1",
+          "contains": "gpu_utilization"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if replicas are CPU/GPU bound or if they are waiting on something else, to decide if adding capacity is the only option."
+        }
+       ],
+       "summary": "Traffic is 2x normal and all replicas are slow with a growing queue; no spare nodes to scale out, so investigating worker saturation and replica utilization to see if we can increase concurrency or need to escalate for more capacity."
+      }
+     },
+     {
+      "step": 56,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-4",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "bad_config",
+         "component": [
+          "replica-2",
+          "replica-3"
+         ],
+         "setting": "memory_limit_gb",
+         "explains": [],
+         "evidence": [
+          "step 41 OOMKilled while loading weights: limit 40GB, need 68GB on replica-2 and replica-3",
+          "memory_limit_gb changed 80->40 on replica-2, replica-3 at step 41",
+          "step 42 rollback -> fixed"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H2",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-3",
+          "replica-4",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-3",
+          "slow:replica-4",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 247 req/s (2.01x normal)",
+          "all replicas slow p95 ~17s",
+          "queue backlog 3461 requests",
+          "workers max_concurrency 64 likely saturated",
+          "no spare GPU nodes to scale out"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Overload: traffic 2x normal, all replicas saturated, no spare nodes. Need additional capacity or traffic management."
+         },
+         "hypothesis": "H2",
+         "purpose": "escalate",
+         "why": "Cannot scale out due to no spare nodes; overload persists despite previous scale_out. Need human intervention for capacity planning."
+        }
+       ],
+       "summary": "Overload persists with no spare nodes to scale out; escalating to infra team for capacity addition."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 56,
+      "team": "infra",
+      "summary": "Overload: traffic 2x normal, all replicas saturated, no spare nodes. Need additional capacity or traffic management.",
+      "hypothesis": "H2",
+      "automatic": false
+     }
+    ],
+    "changes": 2,
+    "approvals": 0,
+    "quiet": 2,
+    "exhausted": false,
+    "status": "recovered",
+    "closed": 104,
+    "close_reason": "monitoring shows no symptoms; recovery verified by code"
+   },
+   {
+    "id": 2,
+    "opened": 122,
+    "first_symptoms": [
+     "slow:replica-3"
+    ],
+    "ledger": {
+     "H1": {
+      "id": "H1",
+      "type": "overload",
+      "component": [
+       "replica-3"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-3"
+      ],
+      "evidence": [
+       "incoming traffic 2.12x normal",
+       "replica-3 p95 latency high"
+      ],
+      "confidence": 0.5,
+      "attempts": 1,
+      "history": [
+       "step 132 set_weight -> not_fixed"
+      ],
+      "status": "not_fixed"
+     },
+     "H2": {
+      "id": "H2",
+      "type": "unknown",
+      "component": [
+       "replica-4"
+      ],
+      "setting": null,
+      "explains": [
+       "slow:replica-4"
+      ],
+      "evidence": [
+       "fixed by set_weight"
+      ],
+      "confidence": 0.9,
+      "attempts": 0,
+      "history": [
+       "step 124 set_weight -> fixed"
+      ],
+      "status": "fixed"
+     },
+     "H3": {
+      "id": "H3",
+      "type": "overload",
+      "component": [
+       "gateway",
+       "workers",
+       "replica-1",
+       "replica-2",
+       "replica-5",
+       "replica-6"
+      ],
+      "setting": null,
+      "explains": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "evidence": [
+       "incoming traffic 2.12x normal",
+       "all active replicas slow",
+       "queue backlog growing",
+       "queue full drops 1070",
+       "gateway error rate 13.8%",
+       "no spare nodes to scale out"
+      ],
+      "confidence": 0.9,
+      "attempts": 1,
+      "history": [
+       "step 146 set_weight -> not_fixed"
+      ],
+      "status": "escalated"
+     }
+    },
+    "actions": [
+     {
+      "step": 122,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Traffic is 2.11x normal causing high latency on replica-3; adding capacity will distribute load and reduce latency.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 124,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 0
+      },
+      "hypothesis": "H2",
+      "purpose": "fix",
+      "why": "Isolate the slow replica to prevent it from affecting user experience while investigating.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "unknown",
+       "setting": null,
+       "component": [
+        "replica-4"
+       ]
+      },
+      "result": "replica-4 traffic weight 1.0 -> 0",
+      "verified": {
+       "step": 132,
+       "cleared": [
+        "slow:replica-4"
+       ],
+       "still_open": []
+      }
+     },
+     {
+      "step": 132,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Traffic is 2.14x normal and all active replicas are slow with a growing queue; adding capacity is required to handle the load.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 132,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-3",
+       "weight": 0.5
+      },
+      "hypothesis": "H1",
+      "purpose": "fix",
+      "why": "Replica-3 is also overloaded; reducing its weight helps balance load while new replicas spin up.",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "replica-3"
+       ]
+      },
+      "result": "replica-3 traffic weight 1.0 -> 0.5",
+      "verified": {
+       "step": 140,
+       "cleared": [],
+       "still_open": [
+        "slow:replica-3"
+       ]
+      },
+      "undone": "replica-3 traffic weight 0.5 -> 1.0"
+     },
+     {
+      "step": 144,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "All active replicas are overloaded; adding capacity will reduce queue backlog and drops.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 146,
+      "action": "set_weight",
+      "args": {
+       "replica": "replica-4",
+       "weight": 1.0
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "replica-4 is healthy and idle (weight 0), so bring it back to help handle overload",
+      "ran": true,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "replica-4 traffic weight 0 -> 1.0",
+      "verified": {
+       "step": 154,
+       "cleared": [],
+       "still_open": [
+        "backlog:queue",
+        "drops:queue",
+        "errors:gateway",
+        "slow:gateway",
+        "slow:replica-1",
+        "slow:replica-2",
+        "slow:replica-5",
+        "slow:replica-6"
+       ]
+      },
+      "undone": "replica-4 traffic weight 1.0 -> 0"
+     },
+     {
+      "step": 158,
+      "action": "scale_out",
+      "args": {
+       "count": 2
+      },
+      "hypothesis": "H3",
+      "purpose": "fix",
+      "why": "Overload with no spare nodes; adding capacity is the only way to absorb 2.15x traffic and clear queue backlog/drops.",
+      "ran": false,
+      "risk": "low",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "no spare GPU node to scale onto"
+     },
+     {
+      "step": 160,
+      "action": "escalate",
+      "args": {
+       "team": "infra",
+       "summary": "Incoming traffic is 2.18x normal, all active replicas are slow, queue is full and dropping requests, and there are no spare GPU nodes to scale out. Need additional capacity or traffic throttling."
+      },
+      "hypothesis": "H3",
+      "purpose": "escalate",
+      "why": "Overload cannot be fixed by available actions (no spare nodes, set_weight already tried, rollback not applicable). Need infra team to add nodes or throttle traffic.",
+      "ran": true,
+      "risk": "none",
+      "cause": {
+       "type": "overload",
+       "setting": null,
+       "component": [
+        "gateway",
+        "workers",
+        "replica-1",
+        "replica-2",
+        "replica-5",
+        "replica-6"
+       ]
+      },
+      "result": "handed to infra"
+     }
+    ],
+    "turns": [
+     {
+      "step": 122,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-3"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.11x normal",
+          "replica-3 p95 latency 5493 ms vs fleet normal 3639 ms"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Traffic is 2.11x normal causing high latency on replica-3; adding capacity will distribute load and reduce latency."
+        }
+       ],
+       "summary": "High incoming traffic (2.11x normal) is likely causing elevated latency on replica-3; scaling out by 2 replicas is the appropriate mitigation to restore performance."
+      }
+     },
+     {
+      "step": 124,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.11x normal",
+          "replica-3 p95 latency 5493 ms vs fleet normal 3639 ms"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 p95 latency 5524 ms (fleet normal 3639 ms)",
+          "replica-4 settings match healthy replicas (model_version, template, quantization, etc.)",
+          "no specific error logs for replica-4 yet"
+         ],
+         "status": "suspected",
+         "confidence": 0.3
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "logs",
+          "component": "replica-4",
+          "contains": "error"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check for internal errors or crashes on the slow replica to distinguish between overload, config issue, or node failure."
+        },
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "replica-4",
+          "contains": "gpu_utilization"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if GPU is saturated (suggesting overload) or idle/stalled (suggesting deadlock or hardware issue)."
+        }
+       ],
+       "summary": "Investigating the new symptom of slow replica-4 by checking its logs and GPU metrics to determine if it's also overloaded or suffering from a different issue like a crash or deadlock, while maintaining suspicion on H1 for replica-3."
+      }
+     },
+     {
+      "step": 124,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "slow:replica-4"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.10x normal",
+          "replica-3 p95 latency 5493 ms vs fleet normal 3639 ms"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 p95 latency 5524 ms (fleet normal 3639 ms)",
+          "replica-4 settings match healthy replicas",
+          "no specific error logs for replica-4",
+          "replica-4 is on gpu-4 (rack-b) while others are on rack-a or b but behaving normally"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "gpu-4",
+          "contains": "temperature"
+         },
+         "hypothesis": "H2",
+         "purpose": "investigate",
+         "why": "Check if gpu-4 is overheating or throttling, which could explain high latency despite normal replica metrics."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 0
+         },
+         "hypothesis": "H2",
+         "purpose": "fix",
+         "why": "Isolate the slow replica to prevent it from affecting user experience while investigating."
+        }
+       ],
+       "summary": "Investigating potential hardware issue on gpu-4 causing replica-4 slowness and isolating it by setting weight to 0."
+      }
+     },
+     {
+      "step": 132,
+      "model": "qwen/qwen3.7-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-4"
+         ],
+         "evidence": [
+          "replica-4 p95 latency high (fleet normal)",
+          "no specific error logs",
+          "fixed by set_weight"
+         ],
+         "status": "ruled_out",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "all active replicas slow",
+          "queue backlog growing"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Traffic is 2.14x normal and all active replicas are slow with a growing queue; adding capacity is required to handle the load."
+        },
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-3",
+          "weight": 0.5
+         },
+         "hypothesis": "H1",
+         "purpose": "fix",
+         "why": "Replica-3 is also overloaded; reducing its weight helps balance load while new replicas spin up."
+        }
+       ],
+       "summary": "Scaling out by 2 replicas to handle 2.14x traffic overload and rebalancing replica-3 to reduce its immediate load pressure."
+      }
+     },
+     {
+      "step": 144,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 p95 latency high (fleet normal)",
+          "no specific error logs",
+          "fixed by set_weight"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 668 in last 2 steps",
+          "gateway error rate 13.0%"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "max_concurrency"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if workers are saturated; if max_concurrency is too low, increasing it may help handle the load."
+        }
+       ],
+       "summary": "Investigating worker max_concurrency to see if increasing it can alleviate the overload, since scale_out failed due to no spare nodes."
+      }
+     },
+     {
+      "step": 144,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 p95 latency high (fleet normal)",
+          "no specific error logs",
+          "fixed by set_weight"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 668 in last 2 steps",
+          "gateway error rate 13.0%"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "metrics",
+          "component": "workers",
+          "contains": "dispatch_rps"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if workers are at max concurrency causing queue buildup"
+        }
+       ],
+       "summary": "Investigating worker dispatch rate to see if max_concurrency limit is causing queue backlog and drops."
+      }
+     },
+     {
+      "step": 144,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 p95 latency high (fleet normal)",
+          "no specific error logs",
+          "fixed by set_weight"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 668 in last 2 steps",
+          "gateway error rate 13.0%"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "All active replicas are overloaded; adding capacity will reduce queue backlog and drops."
+        }
+       ],
+       "summary": "Scaling out by 2 replicas to handle the 2.09x traffic surge and clear the queue backlog and drops."
+      }
+     },
+     {
+      "step": 146,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "not_fixed",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 p95 latency high (fleet normal)",
+          "no specific error logs",
+          "fixed by set_weight"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 668 in last 2 steps",
+          "gateway error rate 13.0%"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "inspect",
+         "args": {
+          "what": "canaries",
+          "component": "replica-1",
+          "contains": "correctness"
+         },
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Check if replicas are returning correct answers despite overload; if not, may indicate a deeper issue."
+        }
+       ],
+       "summary": "Overload persists with no spare nodes to scale; inspecting canary correctness to rule out a non-overload cause before escalating."
+      }
+     },
+     {
+      "step": 146,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "replica-4 p95 latency high (fleet normal)",
+          "no specific error logs",
+          "fixed by set_weight"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.14x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 668 in last 2 steps",
+          "gateway error rate 13.0%"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "set_weight",
+         "args": {
+          "replica": "replica-4",
+          "weight": 1.0
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "replica-4 is healthy and idle (weight 0), so bring it back to help handle overload"
+        }
+       ],
+       "summary": "Scale-out failed due to no spare nodes; bring replica-4 back online to add capacity for overload."
+      }
+     },
+     {
+      "step": 158,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.15x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "explains": [],
+         "evidence": [
+          "fixed by set_weight"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.15x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 740",
+          "gateway error rate 14.2%"
+         ],
+         "status": "suspected",
+         "confidence": 0.8
+        }
+       ],
+       "actions": [
+        {
+         "action": "scale_out",
+         "args": {
+          "count": 2
+         },
+         "hypothesis": "H3",
+         "purpose": "fix",
+         "why": "Overload with no spare nodes; adding capacity is the only way to absorb 2.15x traffic and clear queue backlog/drops."
+        }
+       ],
+       "summary": "Scaling out two replicas to add capacity for the overloaded fleet."
+      }
+     },
+     {
+      "step": 160,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "setting": null,
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.15x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.6
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "setting": null,
+         "explains": [],
+         "evidence": [
+          "fixed by set_weight"
+         ],
+         "status": "fixed",
+         "confidence": 1.0
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "setting": null,
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.15x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 740",
+          "gateway error rate 14.2%"
+         ],
+         "status": "suspected",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "escalate",
+         "args": {
+          "team": "infra",
+          "summary": "Incoming traffic is 2.18x normal, all active replicas are slow, queue is full and dropping requests, and there are no spare GPU nodes to scale out. Need additional capacity or traffic throttling."
+         },
+         "hypothesis": "H3",
+         "purpose": "escalate",
+         "why": "Overload cannot be fixed by available actions (no spare nodes, set_weight already tried, rollback not applicable). Need infra team to add nodes or throttle traffic."
+        }
+       ],
+       "summary": "Overload due to 2.18x normal traffic; no spare nodes to scale out, escalating to infra team for capacity or throttling."
+      }
+     },
+     {
+      "step": 162,
+      "model": "deepseek/deepseek-v4-flash",
+      "stored": true,
+      "symptoms": [
+       "backlog:queue",
+       "drops:queue",
+       "errors:gateway",
+       "slow:gateway",
+       "slow:replica-1",
+       "slow:replica-2",
+       "slow:replica-3",
+       "slow:replica-5",
+       "slow:replica-6"
+      ],
+      "reply": {
+       "ledger": [
+        {
+         "id": "H1",
+         "type": "overload",
+         "component": [
+          "replica-3"
+         ],
+         "explains": [
+          "slow:replica-3"
+         ],
+         "evidence": [
+          "incoming traffic 2.12x normal",
+          "replica-3 p95 latency high"
+         ],
+         "status": "suspected",
+         "confidence": 0.5
+        },
+        {
+         "id": "H2",
+         "type": "unknown",
+         "component": [
+          "replica-4"
+         ],
+         "explains": [],
+         "evidence": [
+          "fixed by set_weight"
+         ],
+         "status": "ruled_out",
+         "confidence": 0.9
+        },
+        {
+         "id": "H3",
+         "type": "overload",
+         "component": [
+          "gateway",
+          "workers",
+          "replica-1",
+          "replica-2",
+          "replica-5",
+          "replica-6"
+         ],
+         "explains": [
+          "backlog:queue",
+          "drops:queue",
+          "errors:gateway",
+          "slow:gateway",
+          "slow:replica-1",
+          "slow:replica-2",
+          "slow:replica-5",
+          "slow:replica-6"
+         ],
+         "evidence": [
+          "incoming traffic 2.12x normal",
+          "all active replicas slow",
+          "queue backlog growing",
+          "queue full drops 1070",
+          "gateway error rate 13.8%",
+          "no spare nodes to scale out"
+         ],
+         "status": "escalated",
+         "confidence": 0.9
+        }
+       ],
+       "actions": [
+        {
+         "action": "wait",
+         "args": {},
+         "hypothesis": "H3",
+         "purpose": "investigate",
+         "why": "Infra team has been escalated; waiting for their response or capacity addition before making further changes."
+        }
+       ],
+       "summary": "All symptoms point to a system-wide overload with no spare capacity; infra has been escalated and I am waiting for their action."
+      }
+     }
+    ],
+    "notes": [],
+    "escalations": [
+     {
+      "step": 160,
+      "team": "infra",
+      "summary": "Incoming traffic is 2.18x normal, all active replicas are slow, queue is full and dropping requests, and there are no spare GPU nodes to scale out. Need additional capacity or traffic throttling.",
+      "hypothesis": "H3",
+      "automatic": false
+     },
+     {
+      "step": 166,
+      "team": "on-call engineer",
+      "summary": "Sanad stopped (used all 12 model turns). Still open: backlog:queue, drops:queue, errors:gateway, slow:gateway, slow:replica-1, slow:replica-2, slow:replica-3, slow:replica-5, slow:replica-6. Ledger: H1 overload  on ['replica-3'] [not_fixed]; H2 unknown  on ['replica-4'] [fixed]; H3 overload  on ['gateway', 'workers', 'replica-1', 'replica-2', 'replica-5', 'replica-6'] [escalated]",
+      "hypothesis": null,
+      "automatic": true
+     }
+    ],
+    "changes": 3,
+    "approvals": 0,
+    "quiet": 0,
+    "exhausted": true,
+    "status": "handed_to_people",
+    "closed": 200,
+    "close_reason": "watch ended with 9 symptoms open"
+   }
+  ],
+  "cost": 0.0128278141,
+  "calls": 45,
+  "tokens_in": 98987,
+  "tokens_out": 23769
+ },
+ "truth": [
+  {
+   "fault": "f1",
+   "kind": "benign_change",
+   "step": 35,
+   "target": [
+    "gateway"
+   ],
+   "cause": null,
+   "fix": null,
+   "fixable": null,
+   "needs_human": null,
+   "silent": false,
+   "red_herring": true
+  },
+  {
+   "fault": "f2",
+   "kind": "traffic_spike",
+   "step": 38,
+   "target": [
+    "gateway"
+   ],
+   "cause": "demand rose 1.9x (campaign launch)",
+   "fix": "scale_out",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  },
+  {
+   "fault": "f3",
+   "kind": "low_memory_limit",
+   "step": 41,
+   "target": [
+    "replica-2",
+    "replica-3"
+   ],
+   "cause": "memory_limit_gb 40 deployed to replica-2, replica-3",
+   "fix": "rollback:memory_limit_gb",
+   "fixable": true,
+   "needs_human": null,
+   "silent": false
+  }
+ ],
+ "changes": [
+  {
+   "step": 35,
+   "time": "2026-10-30T09:05:50",
+   "component": "gateway",
+   "key": "log_level",
+   "old": "info",
+   "new": "debug",
+   "scope": [
+    "gateway"
+   ],
+   "author": "mfahad",
+   "ticket": "OPS-140",
+   "note": "more logging for audit"
+  },
+  {
+   "step": 41,
+   "time": "2026-10-30T09:06:50",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 80,
+   "new": 40,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "ci-bot",
+   "ticket": "REL-2291",
+   "note": "right-size container memory"
+  },
+  {
+   "step": 42,
+   "time": "2026-10-30T09:07:00",
+   "component": "model-server",
+   "key": "memory_limit_gb",
+   "old": 40,
+   "new": 80,
+   "scope": [
+    "replica-2",
+    "replica-3"
+   ],
+   "author": "sanad",
+   "ticket": "INC",
+   "note": "rollback"
+  }
+ ]
+}
