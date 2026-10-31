@@ -1,0 +1,39 @@
+# A challenge scenario, written after the held-out run, never used for tuning.
+# Five faults and a trap:
+#   step 33: a harmless logging change (the trap: it is the newest change when trouble starts)
+#   step 35: int4 quantization on replica-2 and replica-3 (silent: Arabic maths goes wrong, English mostly fine)
+#   step 37: GPU-1 fan fails (replica-1 slows down)
+#   step 40: worker concurrency cut from 64 to 4 (the queue backs up and drops requests)
+#   step 44: identity service outage (another team's: must be handed to a person, not fixed)
+#   step 95: a server build with a memory leak reaches replica-4, long after the rest looks settled
+
+name = "nightmare"
+seed = 777
+warmup = 30
+
+[[fault]]
+kind = "benign_change"
+at = 33
+
+[[fault]]
+kind = "bad_quantization"
+at = 35
+target = ["replica-2", "replica-3"]
+
+[[fault]]
+kind = "gpu_thermal"
+at = 37
+target = ["gpu-1"]
+
+[[fault]]
+kind = "bad_worker_concurrency"
+at = 40
+
+[[fault]]
+kind = "identity_outage"
+at = 44
+
+[[fault]]
+kind = "memory_leak"
+at = 95
+target = ["replica-4"]
