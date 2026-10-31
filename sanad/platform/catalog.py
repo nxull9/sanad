@@ -16,7 +16,6 @@ serving faults:
 - silent data corruption on a GPU corrupts answers of every kind.
 """
 
-# The release each replica starts on: the known-good configuration.
 GOOD = {
     "model_version": "allam-34b-v2.3",
     "template": "chat-tpl-12",
@@ -26,8 +25,6 @@ GOOD = {
     "memory_limit_gb": 80,
 }
 
-# Earlier releases, so the change log has a believable history to roll back
-# through. All of them were good in their day.
 HISTORY = {
     "model_version": ["allam-34b-v2.1", "allam-34b-v2.2"],
     "template": ["chat-tpl-10", "chat-tpl-11"],
@@ -37,7 +34,6 @@ HISTORY = {
     "memory_limit_gb": [80],
 }
 
-# Bad builds a fault can deploy, and the defect each one carries.
 BAD = {
     "model_version": ("allam-34b-v2.4-rc", "domain_regression"),
     "template": ("chat-tpl-13", "format_break"),
@@ -49,8 +45,6 @@ BAD = {
 
 DEFECT_OF = {(key, value): defect for key, (value, defect) in BAD.items()}
 
-# Chance an answer goes wrong, by defect, language and question category.
-# "*" applies to any language or category not named.
 WRONG_RATE = {
     "domain_regression": {"*": {"fact": 0.7, "retrieval": 0.7, "math": 0.15, "*": 0.05}},
     "format_break": {"*": {"format": 1.0, "*": 0.25}},
@@ -61,11 +55,8 @@ WRONG_RATE = {
     "index_corruption": {"*": {"retrieval": 0.9, "*": 0.0}},
 }
 
-# A healthy model is not perfect. Canaries are chosen as questions it gets
-# right, but now and then it still slips; thresholds must allow for this.
 BASELINE_WRONG = 0.01
 
-# The other side of the platform: gateway and workers.
 GATEWAY_GOOD = {"timeout_ms": 30000, "log_level": "info"}
 GATEWAY_BAD = {"timeout_ms": 800}
 WORKERS_GOOD = {"max_concurrency": 64}

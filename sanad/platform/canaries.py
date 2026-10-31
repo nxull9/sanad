@@ -62,7 +62,7 @@ def wrong_reply(canary, defects, draw):
     if "tokenizer_mismatch" in defects and canary["lang"] == "ar":
         return garble(canary["reply"])
     if "format_break" in defects and canary["check"] == "json":
-        return canary["wrong"][0]  # prose where JSON was asked for
+        return canary["wrong"][0]
     return canary["wrong"][int(draw * len(canary["wrong"])) % len(canary["wrong"])]
 
 

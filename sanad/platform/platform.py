@@ -26,21 +26,21 @@ from sanad.platform import canaries, catalog
 STEP_SECONDS = 10
 START = datetime(2026, 10, 30, 9, 0, 0)
 
-REPLICA_RPS = 45.0          # requests a healthy replica serves per second
-WORKER_SLOT_RPS = 0.5       # requests one concurrency slot dispatches per second
-QUEUE_LIMIT = 5000          # requests held before the queue starts dropping
-GEN_SECONDS = 1.2           # mean generation time on a healthy GPU
-RESTART_STEPS = 2           # steps a restarted component is down
-MOVE_STEPS = 3              # steps to move a replica to another node
-REBUILD_STEPS = 20          # steps to rebuild the vector index
+REPLICA_RPS = 45.0
+WORKER_SLOT_RPS = 0.5
+QUEUE_LIMIT = 5000
+GEN_SECONDS = 1.2
+RESTART_STEPS = 2
+MOVE_STEPS = 3
+REBUILD_STEPS = 20
 
 
 @dataclass
 class Node:
     name: str
     rack: str
-    fan_failed: bool = False         # thermal throttling
-    corrupting: bool = False         # silent data corruption
+    fan_failed: bool = False
+    corrupting: bool = False
     powered: bool = True
     drained: bool = False
     ecc_total: int = 0
@@ -51,13 +51,13 @@ class Replica:
     name: str
     node: str
     config: dict
-    history: dict = field(default_factory=dict)   # key -> earlier values, latest last
+    history: dict = field(default_factory=dict)
     up: bool = True
     down_steps: int = 0
     memory_pct: float = 55.0
     restarts: int = 0
     weight: float = 1.0
-    crashed: bool = False            # stays down until restarted
+    crashed: bool = False
 
 
 class Platform:
@@ -84,11 +84,10 @@ class Platform:
         self.metrics = {}
         self.logs = []
         self.change_log = []
-        self._truth = []           # what was injected; never shown to the agent
-        self._scheduled = []       # (step, fault) pairs waiting to fire
+        self._truth = []
+        self._scheduled = []
         self.actions_taken = []
 
-    # ---- time ---------------------------------------------------------
 
     def now(self, step=None):
         return START + timedelta(seconds=STEP_SECONDS * (self.step_no if step is None else step))
@@ -109,7 +108,6 @@ class Platform:
             self._tick()
             self.step_no += 1
 
-    # ---- the simulation ----------------------------------------------
 
     def defects(self, replica):
         """Defects on a replica's answer path: its own builds, its node, and
@@ -130,7 +128,6 @@ class Platform:
             if r.up:
                 r.memory_pct = 55.0
         elif not r.crashed and "memory_limit_too_low" in defects:
-            # Weights do not fit: the process dies while loading, again and again.
             r.restarts += 1
             r.up, r.down_steps = False, RESTART_STEPS
             self._log("ERROR", r.name, f"OOMKilled while loading weights: limit {r.config['memory_limit_gb']}GB, need 68GB")
@@ -161,15 +158,12 @@ class Platform:
         if self.spike_until is not None and s >= self.spike_until:
             self.load_factor, self.spike_until = 1.0, None
 
-        # Demand: a slow daily swing with a little noise.
         demand = 120 * (1 + 0.15 * math.sin(2 * math.pi * s / 720)) * self.load_factor
         demand *= 1 + self.rng("demand").gauss(0, 0.03)
 
-        # The gateway rejects what the identity service cannot vouch for.
         auth_fail = 0.0 if self.identity_up else 0.62
         admitted = demand * (1 - auth_fail)
 
-        # Capacity: workers dispatch, replicas generate; the smaller one wins.
         serving = [r for r in self.replicas.values() if r.up and r.weight > 0]
         speed = {r.name: (0.4 if self.nodes[r.node].fan_failed else 1.0) for r in serving}
         replica_cap = sum(REPLICA_RPS * speed[r.name] for r in serving)
@@ -182,15 +176,12 @@ class Platform:
         self.queue_depth -= dropped
         wait = self.queue_depth / service if service > 0 else 60.0
 
-        # Generation time, weighted by how traffic is split across replicas.
         total_w = sum(r.weight for r in serving) or 1.0
         gen_of = {r.name: GEN_SECONDS / speed[r.name] for r in serving}
         gen = sum(gen_of[r.name] * r.weight for r in serving) / total_w if serving else 0.0
         tail = max((gen_of[r.name] for r in serving if r.weight / total_w >= 0.05), default=gen)
         retrieval = 0.3 if self.vectordb["rebuild_steps"] else 0.04
 
-        # Requests that outlive the gateway timeout fail; generation times are
-        # roughly exponential, so the share past the timeout is exp(-t/mean).
         timeout = self.gateway["timeout_ms"] / 1000
         if not serving:
             timed_out = 1.0
@@ -218,8 +209,6 @@ class Platform:
             self._metric(r.name, "latency_p95_ms", r_p95, 0.04)
             self._metric(r.name, "memory_pct", r.memory_pct if r.up else 0.0, 0.01)
             self._metric(r.name, "restarts", r.restarts, 0.0)
-            # Garbled Arabic comes out as many more tokens per answer: a quiet
-            # clue, visible only to someone who looks.
             tokens = 180 * (2.4 if "tokenizer_mismatch" in self.defects(r) else 1.0)
             self._metric(r.name, "output_tokens_avg", tokens if r.up else 0.0, 0.05)
         for n in self.nodes.values():
@@ -269,13 +258,11 @@ class Platform:
                 self._log("ERROR", n.name, f"node unreachable; BMC reports PSU fault on {n.rack}")
         if self.vectordb["active"] in self.vectordb["corrupt"] and rng.random() < 0.12:
             self._log("WARN", "vectordb", "segment 7 checksum mismatch; serving cached segment")
-        # Background noise every real system has.
         if rng.random() < 0.15:
             self._log("WARN", "gateway", f"slow request {3 + rng.random() * 3:.1f}s for tenant t-{rng.randint(100, 999)}")
         if rng.random() < 0.1:
             self._log("INFO", "autoscaler", "no scaling action: within target utilisation")
 
-    # ---- changes, the way faults and humans alter the platform --------
 
     def record_change(self, component, key, old, new, scope, author, ticket, note):
         self.change_log.append({"step": self.step_no, "time": self.now().isoformat(), "component": component,
@@ -291,7 +278,7 @@ class Platform:
             if old != value:
                 r.history.setdefault(key, []).append(old)
                 r.config[key] = value
-                r.memory_pct = 55.0   # a rolling restart: fresh process, no outage
+                r.memory_pct = 55.0
         self.record_change("model-server", key, old, value, list(scope), author, ticket, note)
 
     def set_gateway(self, key, value, author="ops", ticket="OPS-0", note=""):
@@ -306,7 +293,6 @@ class Platform:
         self.workers[key] = value
         self.record_change("workers", key, old, value, ["workers"], author, ticket, note)
 
-    # ---- Tools: all the agent can see and do ---------------------------
 
     def topology(self):
         return {
@@ -360,9 +346,6 @@ class Platform:
     def run_canaries(self, lang=None, category=None, replica=None):
         return [self.ask(c, replica) for c in canaries.select(lang, category)]
 
-    # ---- Actions -------------------------------------------------------
-    # Each returns what happened and how to undo it. Whether an action is
-    # allowed is not decided here: that is the safety governor's job.
 
     def act(self, action, **args):
         handler = getattr(self, f"_do_{action}", None)

@@ -7,11 +7,9 @@ import sys
 from pathlib import Path
 
 from sanad.platform import scenario
+from scripts import make_scenarios as make
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
-
-import make_scenarios as make  # noqa: E402
 
 
 def load(folder):
@@ -23,8 +21,8 @@ def kinds(spec):
 
 
 def test_the_committed_scenarios_are_exactly_what_the_script_makes():
-    done = subprocess.run([sys.executable, str(ROOT / "scripts" / "make_scenarios.py"), "--check"],
-                          capture_output=True, text=True)
+    done = subprocess.run([sys.executable, "-m", "scripts.make_scenarios", "--check"],
+                          capture_output=True, text=True, cwd=ROOT)
     assert done.returncode == 0, done.stdout
 
 

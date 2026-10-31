@@ -126,16 +126,32 @@ Python 3.13, standard library only.
 python -m sanad run scenarios/examples/three-at-once.toml
 ```
 
-That narrates one incident live. With `--mode advise`, every change waits
+That narrates one incident live. To watch it paced for a person, with the
+injected faults, the canary answers and the ledger on screen:
+
+```bash
+SANAD_OFFLINE=1 python -m sanad demo scenarios/examples/three-at-once.toml --pace 1.5
+```
+
+The plain run above narrates one incident live. With `--mode advise`, every change waits
 for a person; add `--ask` to approve risky actions at the keyboard. A
 model call needs `OPENROUTER_API_KEY` in `.env`.
 
-**Rebuild every published number without a key and at no cost.** Every
+**Rebuild the published numbers without a key and at no cost.** Every
 model reply is stored in `replays/`:
 
 ```bash
 SANAD_OFFLINE=1 scripts/run_heldout.sh
 ```
+
+Nine of the ten held-out runs rebuild exactly: both baselines, every
+ablation and both noise reruns. The main Sanad run (19/24) rebuilds exactly
+through h11 and then stops. A network outage interrupted that run, and before
+it was restarted one line was changed: inspecting canaries for a replica with
+no answers yet no longer crashes. For the other variants that change touches
+nothing, but in h12 (a rack power failure, replica-4 down) it changes what
+Sanad reads, so the replies stored for h12 onwards match neither version.
+Rebuilding h12 to h24 takes live model calls, about half a US cent.
 
 ```bash
 python -m pytest

@@ -1,6 +1,6 @@
 # Results
 
-Built by `scripts/make_results.py` from `runs/*/summary.json`. Each run folder also holds one
+Built by `python -m scripts.make_results` from `runs/*/summary.json`. Each run folder also holds one
 trace per scenario: the score, every model turn, every action and the hidden answer key.
 
 ## Held-out set (24 scenarios)

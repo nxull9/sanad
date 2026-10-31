@@ -85,7 +85,7 @@ def test_a_fix_is_judged_by_code_and_a_useless_one_is_undone(scripted):
     watch(p, sanad, 80)
     inc = sanad.incidents[0]
     assert inc["ledger"]["H1"]["status"] == "not_fixed" and inc["ledger"]["H1"]["attempts"] == 1
-    assert p.replicas["replica-1"].config["template"] == "chat-tpl-12"      # the wrong rollback was undone
+    assert p.replicas["replica-1"].config["template"] == "chat-tpl-12"
     assert inc["ledger"]["H2"]["status"] == "fixed"
     assert inc["status"] == "recovered"
 

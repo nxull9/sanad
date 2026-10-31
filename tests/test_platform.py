@@ -30,8 +30,6 @@ def test_the_same_seed_gives_the_same_platform():
 
 
 def test_a_healthy_platform_rarely_misses_a_canary_and_has_few_errors():
-    # A healthy model still slips about 1 time in 100: an agent must not
-    # call a single miss an incident.
     missed = 0
     for seed in range(10):
         p = Platform(seed=seed)
@@ -57,7 +55,7 @@ def test_a_tokenizer_mismatch_garbles_arabic_and_spares_english():
         p = run("bad_tokenizer", seed=seed)
         en += right(p, lang="en")[0]
         ar += right(p, lang="ar")[0]
-    assert en >= 105 and ar <= 50          # out of 120 each
+    assert en >= 105 and ar <= 50
     assert any("Ø" in c["reply"] for c in p.run_canaries(lang="ar") if c["status"] == "wrong")
 
 
@@ -106,7 +104,7 @@ def test_moving_traffic_off_a_suspect_replica_is_an_experiment_that_can_be_undon
     p = run("gpu_corruption", ["gpu-3"])
     shift = p.act("set_weight", replica="replica-3", weight=0.0)
     p.advance(1)
-    assert right(p) == (24, 24)          # routed traffic now avoids the bad GPU
+    assert right(p) == (24, 24)
     p.act(**shift["undo"])
     p.advance(1)
     assert p.replicas["replica-3"].weight == 1.0
@@ -149,7 +147,7 @@ def test_canaries_are_graded_by_meaning_not_wording():
     capital = next(c for c in canaries.BANK if c["id"] == "fact-capital-ar")
     leap = next(c for c in canaries.BANK if c["id"] == "fact-leap-ar")
     city = next(c for c in canaries.BANK if c["id"] == "format-city-en")
-    assert canaries.grade(capital, "العاصمة هي الرِّياض")          # diacritics do not matter
+    assert canaries.grade(capital, "العاصمة هي الرِّياض")
     assert canaries.grade(leap, "366 يوماً") and canaries.grade(leap, "٣٦٦")
     assert not canaries.grade(leap, "3660")
     assert canaries.grade(city, '{"city": "riyadh"}') and not canaries.grade(city, "Riyadh")

@@ -1,6 +1,6 @@
 """Watch Sanad handle one scenario, paced for a person to follow.
 
-    python scripts/demo.py scenarios/examples/three-at-once.toml [--pace 1.0] [--plain]
+    python -m sanad demo scenarios/examples/three-at-once.toml [--pace 1.0] [--plain]
 
 This is a viewer, not a different agent. It drives the platform and Sanad
 exactly as `sanad.evaluate.run` does, tick for tick, so Sanad makes the same
@@ -13,17 +13,12 @@ With SANAD_OFFLINE=1 the AI's replies come from the stored replies of an
 earlier live run of the same scenario, so every rehearsal is identical and free.
 """
 
-import argparse
-import sys
 import time
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from sanad import evaluate, llm  # noqa: E402
-from sanad.platform import scenario  # noqa: E402
-from sanad.platform.canaries import BANK  # noqa: E402
-from sanad.tools import Tools  # noqa: E402
+from sanad import evaluate, llm
+from sanad.platform import scenario
+from sanad.platform.canaries import BANK
+from sanad.tools import Tools
 
 FRIENDLY = {
     "gpu_thermal": "GPU fan fails: the node overheats and slows down",
@@ -83,20 +78,14 @@ def question_of(answer):
     return next(c["question"] for c in BANK if c["id"] == answer["id"])
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("scenario")
-    parser.add_argument("--pace", type=float, default=1.0, help="1.0 is reading speed; 0 for no pauses")
-    parser.add_argument("--plain", action="store_true", help="no colour")
-    parser.add_argument("--max-usd", type=float, default=0.02)
-    args = parser.parse_args()
-    s = Screen(args.pace, args.plain)
+def show(path, pace=1.0, plain=False, max_usd=0.02):
+    s = Screen(pace, plain)
 
-    spec = scenario.load(args.scenario)
+    spec = scenario.load(path)
     p = scenario.build(spec)
     tools = Tools(p)
     events = []
-    budget = llm.Budget(args.max_usd)
+    budget = llm.Budget(max_usd)
     agent = evaluate.factory("sanad", budget, say=events.append)(tools)
     base_p95 = sum(p.metrics["gateway"]["latency_p95_ms"][-20:]) / 20
 
@@ -144,11 +133,7 @@ def main():
         can = (s.c(f"canaries EN {right['en']}/{asked['en']} AR {right['ar']}/{asked['ar']}", "32" if canary_ok else "1;31"))
         s.out(f"  {p.now(p.step_no - 1).strftime('%H:%M:%S')}  errors {err:5.1%}  p95 {p95 / 1000:4.1f}s  {dash}   {can}",
               0.9)
-        # Only once a silent fault is really active and many answers are wrong:
-        # a healthy model also slips about once in a hundred, and that is noise.
         if silent_active and len(wrong) >= 8 and not shown_example and dash_ok:
-            # The example comes from the replica with the most wrong answers, so it
-            # shows the fault, not a healthy replica's occasional slip.
             worst = max({r for r, _ in wrong}, key=lambda r: sum(x == r for x, _ in wrong))
             mine = [(r, a) for r, a in wrong if r == worst]
             replica, a = next(((r, a) for r, a in mine if a["category"] == "format"), mine[0])
@@ -195,7 +180,3 @@ def main():
            "replayed from the stored replies of the live run, $0 paid now")
     s.out(s.c(f"  AI replies: {how}", "2"))
     s.out()
-
-
-if __name__ == "__main__":
-    main()

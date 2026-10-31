@@ -17,7 +17,7 @@ the same files on every run. To confirm the committed files are exactly what
 it makes, run:
 
 ```bash
-python scripts/make_scenarios.py --check
+python -m scripts.make_scenarios --check
 ```
 
 ## Why the held-out score means something

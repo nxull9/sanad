@@ -24,8 +24,6 @@ ROOT = Path(__file__).resolve().parent.parent
 REPLAYS = ROOT / "replays"
 URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Price per million tokens (input, output), from OpenRouter on 30 October 2026.
-# Used only when a reply does not report its own cost.
 PRICES = {
     "qwen/qwen3.7-flash": (0.03, 0.13),
     "deepseek/deepseek-v4-flash": (0.091, 0.182),
@@ -39,12 +37,12 @@ class BudgetExceeded(Exception):
 class Budget:
     def __init__(self, max_usd):
         self.max_usd = max_usd
-        self.spent = 0.0      # paid calls only
-        self.calls = 0        # every call, stored or paid
+        self.spent = 0.0
+        self.calls = 0
         self.paid_calls = 0
         self.tokens_in = 0
         self.tokens_out = 0
-        self.cost = 0.0       # what the calls cost when first made, stored or not
+        self.cost = 0.0
 
     def check(self):
         if self.spent >= self.max_usd:
@@ -98,7 +96,7 @@ def _post(body, key, attempts=6):
             status = getattr(error, "code", None)
             if attempt == attempts - 1 or (status is not None and status < 500 and status != 429):
                 raise
-            time.sleep(min(30, 2 ** (attempt + 1)))     # rides out a short network drop
+            time.sleep(min(30, 2 ** (attempt + 1)))
 
 
 def chat(model, messages, budget, max_tokens=1500, reasoning=None):

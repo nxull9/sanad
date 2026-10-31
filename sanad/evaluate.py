@@ -22,7 +22,7 @@ from sanad.platform.platform import REPLICA_RPS, WORKER_SLOT_RPS
 from sanad.tools import Tools
 
 ROOT = Path(__file__).resolve().parent.parent
-HORIZON = 170     # steps watched after the warm-up
+HORIZON = 170
 TICK = 2
 
 RELEASE_KEY = {"bad_model": "model_version", "bad_template": "template", "bad_tokenizer": "tokenizer",
@@ -38,8 +38,6 @@ CONFIG_KEY = {**RELEASE_KEY, "bad_gateway_timeout": "timeout_ms", "bad_worker_co
 ANY_COMPONENT = {"traffic_spike", "worker_deadlock", "index_corruption", "identity_outage",
                  "bad_gateway_timeout", "bad_worker_concurrency"}
 
-
-# ---- ground truth --------------------------------------------------------
 
 def removed(p, t):
     """Whether the cause behind answer-key entry `t` is gone from the platform."""
@@ -69,7 +67,7 @@ def removed(p, t):
                           for r in serving if r.up)
         worker_cap = p.worker_count * p.workers["max_concurrency"] * WORKER_SLOT_RPS
         return min(replica_cap, worker_cap) >= demand
-    return None      # nobody here can remove it
+    return None
 
 
 def matches(h, t, p):
@@ -85,15 +83,13 @@ def matches(h, t, p):
     names = {str(c) for c in h.get("component") or []}
     targets = set(t["target"])
     if kind in ("gpu_thermal", "gpu_corruption"):
-        targets |= {f"replica-{t['target'][0].split('-')[1]}"}      # the replica that started on that node
+        targets |= {f"replica-{t['target'][0].split('-')[1]}"}
     if kind == "replica_crash":
-        targets |= {f"gpu-{t['target'][0].split('-')[1]}"}          # the node the crashed replica started on
+        targets |= {f"gpu-{t['target'][0].split('-')[1]}"}
     if kind == "rack_power":
         targets |= {n for n, node in p.nodes.items() if node.rack == t["target"][0]}
     return bool(names & targets)
 
-
-# ---- running ---------------------------------------------------------------
 
 def run(path, make_agent, horizon=HORIZON, tick=TICK, seed_offset=0):
     """Watch one scenario. `seed_offset` keeps the faults and their timing
@@ -179,8 +175,6 @@ def acted_cause(a):
 def agent_routine(agent):
     return getattr(agent, "routine", None)
 
-
-# ---- variants --------------------------------------------------------------
 
 VARIANTS = {
     "sanad": {},

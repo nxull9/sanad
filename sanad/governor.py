@@ -18,26 +18,24 @@ REPLICA_KEYS = {"model_version", "template", "quantization", "tokenizer", "serve
 GATEWAY_KEYS = {"timeout_ms", "log_level"}
 WORKER_KEYS = {"max_concurrency"}
 
-# How risky each change is, and why.
 RISK = {
-    "set_weight": "low",          # undone by setting it back
-    "rollback": "low",            # undone by rolling forward; returns to a version that ran before
-    "failover_vectordb": "low",   # undone by failing back
-    "scale_out": "low",           # adds capacity; undone by removing it
-    "restart": "medium",          # a replica is out for a few seconds
-    "drain": "medium",            # a replica moves; its node is out of service until a person clears it
-    "rebuild_index": "high",      # cannot be undone, and lookups are slow for minutes
+    "set_weight": "low",
+    "rollback": "low",
+    "failover_vectordb": "low",
+    "scale_out": "low",
+    "restart": "medium",
+    "drain": "medium",
+    "rebuild_index": "high",
 }
-RESTART_WORKERS_RISK = "high"     # every request stops being dispatched while the pool restarts
+RESTART_WORKERS_RISK = "high"
 
-# Steps (of 10 s) to wait after an action before judging what it did.
 SETTLE = {"restart": 3, "rollback": 2, "drain": 4, "set_weight": 1, "scale_out": 4,
           "failover_vectordb": 1, "rebuild_index": 21}
 
-MAX_TURNS = 12               # model calls per incident
-MAX_CHANGES = 10             # changes per incident
-MAX_ATTEMPTS = 2             # fixes tried for one cause before it must go to a person
-MAX_REPEATS = 2              # times the same action with the same arguments may run
+MAX_TURNS = 12
+MAX_CHANGES = 10
+MAX_ATTEMPTS = 2
+MAX_REPEATS = 2
 MAX_ACTIONS_PER_TURN = 3
 
 

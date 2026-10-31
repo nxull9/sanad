@@ -18,10 +18,10 @@ from dataclasses import dataclass
 
 from sanad.platform.canaries import BANK
 
-WINDOW = 3            # steps of recent data a metric symptom is judged on
-LONG_WINDOW = 12      # for counters that move rarely: restarts, ECC errors
-CANARY_ROUNDS = 3     # rounds of canary questions per replica a symptom is judged on
-CANARY_MIN_WRONG = 4  # wrong answers in one language and category, out of at most 9
+WINDOW = 3
+LONG_WINDOW = 12
+CANARY_ROUNDS = 3
+CANARY_MIN_WRONG = 4
 NOMINAL_CLOCK = 1980.0
 QUESTION = {c["id"]: c for c in BANK}
 LANGS = {"ar": "Arabic", "en": "English"}
@@ -70,7 +70,7 @@ class Canaries:
     build that reached only part of the fleet."""
 
     def __init__(self):
-        self.rounds = defaultdict(list)    # replica -> [(step, results)]
+        self.rounds = defaultdict(list)
 
     def probe(self, tools):
         for name, r in tools.topology()["replicas"].items():

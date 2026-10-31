@@ -28,8 +28,8 @@ from sanad import governor, llm, observe
 
 ROUTINE = "qwen/qwen3.7-flash"
 STRONG = "deepseek/deepseek-v4-flash"
-VERIFY_STEPS = 6     # after settling, watch this long (three canary rounds) before judging a fix
-QUIET_CHECKS = 2     # checks in a row with no symptoms before an incident is called recovered
+VERIFY_STEPS = 6
+QUIET_CHECKS = 2
 CODE_STATUSES = {"testing", "fixed", "partly_fixed", "not_fixed", "confirmed", "escalated"}
 
 SYSTEM = """You are Sanad, the on-call agent for an AI serving platform that answers users in Arabic and English.
@@ -80,8 +80,8 @@ class Sanad:
         self.mode = mode
         self.routine, self.strong, self.routing = routine, strong, routing
         self.use_canaries = use_canaries
-        self.trust_model = trust_model          # ablation: the model, not code, decides when it is over
-        self.governor_on = governor_on          # ablation: no limits, no undo
+        self.trust_model = trust_model
+        self.governor_on = governor_on
         self.approve = approve or (lambda action, decision: True)
         self.say = say or (lambda text: None)
         self.base = observe.Baseline(tools)
@@ -91,11 +91,10 @@ class Sanad:
         self.incident = None
         self.incidents = []
         self.previous = set()
-        self.ignored = set()                    # trust_model ablation: keys it declared resolved
+        self.ignored = set()
         self.pending = []
-        self.parked = {}                        # replica -> traffic weight before Sanad changed it
+        self.parked = {}
 
-    # ---- the loop ------------------------------------------------------
 
     def tick(self):
         t = self.tools
@@ -138,7 +137,6 @@ class Sanad:
             status = "handed_to_people" if inc["escalations"] else "unresolved"
             self._close(inc, status, f"watch ended with {len(open_)} symptoms open")
 
-    # ---- incidents -----------------------------------------------------
 
     def _open(self, symptoms):
         inc = {"id": len(self.incidents) + 1, "opened": self.tools.step, "first_symptoms": sorted(symptoms),
@@ -166,11 +164,10 @@ class Sanad:
                                    "hypothesis": None, "automatic": True})
         self.say(f"[step {self.tools.step}] handing to on-call engineer: {why}")
 
-    # ---- model turns ---------------------------------------------------
 
     def _turns(self, inc, symptoms, active):
         extra = ""
-        for _ in range(3):      # a turn that only reads may be followed at once by another
+        for _ in range(3):
             if inc["exhausted"]:
                 return
             if len(inc["turns"]) >= governor.MAX_TURNS and self.governor_on:
@@ -262,7 +259,6 @@ class Sanad:
             inc["ledger"][h["id"]] = new
         return renamed
 
-    # ---- acting --------------------------------------------------------
 
     def _run(self, inc, actions, symptoms):
         settle = 0
@@ -398,7 +394,6 @@ class Sanad:
                 out.append(f"inspect {args}: nothing to show")
         return "\n".join(out)
 
-    # ---- what the model reads -----------------------------------------
 
     def _prompt(self, inc, symptoms, active, extra):
         t = self.tools
@@ -433,7 +428,6 @@ class Sanad:
                   f"{governor.MAX_CHANGES - inc['changes']} changes. Mode: {self.mode}."]
         return "\n".join(lines)
 
-    # ---- the report ----------------------------------------------------
 
     def report(self):
         return {"incidents": self.incidents, "cost": self.budget.cost, "calls": self.budget.calls,

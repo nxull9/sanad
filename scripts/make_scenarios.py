@@ -15,8 +15,8 @@ How the held-out set differs from practice, so a held-out score means something:
   arrive late, after an agent may think it is done, and stronger traffic spikes;
 - both sets have healthy controls, where the right answer is "nothing is wrong".
 
-    python scripts/make_scenarios.py          # write scenarios/practice and scenarios/heldout
-    python scripts/make_scenarios.py --check  # fail if the committed files differ
+    python -m scripts.make_scenarios          # write scenarios/practice and scenarios/heldout
+    python -m scripts.make_scenarios --check  # fail if the committed files differ
 """
 
 import hashlib
@@ -25,17 +25,16 @@ import random
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+from sanad.platform import scenario
+from sanad.platform.faults import KINDS, SILENT
 
-from sanad.platform import scenario  # noqa: E402
-from sanad.platform.faults import KINDS, SILENT  # noqa: E402
+ROOT = Path(__file__).resolve().parent.parent
 
 REPLICAS = [f"replica-{i}" for i in range(1, 5)]
-NODES = [f"gpu-{i}" for i in range(1, 5)]          # the nodes that start with a replica on them
+NODES = [f"gpu-{i}" for i in range(1, 5)]
 RELEASES = {"bad_model", "bad_template", "bad_tokenizer", "bad_quantization", "memory_leak", "low_memory_limit"}
-NODE_FAULTS = {"gpu_thermal", "gpu_corruption"}    # each needs a spare node to drain onto
-HUMAN_ONLY = {"identity_outage", "rack_power"}     # nothing the agent can do removes these
+NODE_FAULTS = {"gpu_thermal", "gpu_corruption"}
+HUMAN_ONLY = {"identity_outage", "rack_power"}
 FAULT_KINDS = sorted(set(KINDS) - {"benign_change"})
 HELD_OUT_KINDS = {"bad_quantization", "low_memory_limit", "index_corruption"}
 SEEN_KINDS = [k for k in FAULT_KINDS if k not in HELD_OUT_KINDS]
@@ -61,7 +60,6 @@ def pairs(kinds):
 def fault_spec(kind, rng, used_nodes, spike_factors):
     spec = {"kind": kind}
     if kind in RELEASES and rng.random() < 0.5:
-        # A partial rollout: only some replicas carry the bad build.
         spec["target"] = sorted(rng.sample(REPLICAS, rng.randint(1, 3)))
     elif kind in NODE_FAULTS:
         node = rng.choice([n for n in NODES if n not in used_nodes])
@@ -89,7 +87,6 @@ def make(name, seed, kinds, rng, herring=False, late=False, spike_factors=(1.7,)
             at += rng.randint(30, 50) if late and i == len(faults) - 1 else rng.randint(1, 8)
         f["at"] = at
     if herring:
-        # A harmless change just before the trouble starts: the latest change is not always the cause.
         first = faults[0]["at"] if faults else WARMUP + rng.randint(4, 8)
         faults.insert(0, {"kind": "benign_change", "at": first - rng.randint(1, 3)})
     return {"name": name, "seed": seed, "faults": faults, "late": late}
@@ -127,11 +124,10 @@ def heldout_set(practice):
     banned = set().union(*(pairs(f["kind"] for f in s["faults"] if f["kind"] != "benign_change") for s in practice))
     factors = (1.6, 1.7, 1.8, 1.9)
     fixable = set(FAULT_KINDS) - HUMAN_ONLY
-    plan = [((), False, False), ((), False, False), ((), True, False), ((), True, False)]   # healthy controls
+    plan = [((), False, False), ((), False, False), ((), True, False), ((), True, False)]
     plan += [((k,), rng.random() < 0.5, False) for k in sorted(HELD_OUT_KINDS)]
     plan += [((k,), rng.random() < 0.5, False) for k in rng.sample(SEEN_KINDS, 3)]
     combos = []
-    # Something only a person can fix, mixed with something the agent should fix itself.
     for human in sorted(HUMAN_ONLY):
         combos.append((pick(rng, fixable | {human}, 2, banned, must={human}), False))
     for i in range(6):

@@ -4,7 +4,7 @@ Every number in the results page comes from a runs/<label>/summary.json
 file, and every summary comes from per-scenario traces next to it, so each
 figure can be followed back to the incident that produced it.
 
-    python scripts/make_results.py
+    python -m scripts.make_results
 """
 
 import json
@@ -58,7 +58,7 @@ def table(labels):
 def main():
     runs = sorted(p.name for p in (ROOT / "runs").iterdir() if (p / "summary.json").exists())
     sections = ["# Results", "",
-                "Built by `scripts/make_results.py` from `runs/*/summary.json`. Each run folder also holds one",
+                "Built by `python -m scripts.make_results` from `runs/*/summary.json`. Each run folder also holds one",
                 "trace per scenario: the score, every model turn, every action and the hidden answer key.", ""]
     for folder in ("heldout", "practice"):
         labels = sorted((r for r in runs if r.startswith(folder + "-")),
